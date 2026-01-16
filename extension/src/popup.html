@@ -1,0 +1,150 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Tab Cleanser</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        color: #e8e8e8;
+        min-width: 280px;
+        padding: 16px;
+      }
+      .header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 16px;
+      }
+      .header img {
+        width: 32px;
+        height: 32px;
+      }
+      h1 {
+        font-size: 16px;
+        font-weight: 600;
+        color: #fff;
+      }
+      .status-card {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 10px;
+        padding: 14px;
+        margin-bottom: 12px;
+      }
+      .status-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 13px;
+        padding: 6px 0;
+      }
+      .status-row:not(:last-child) {
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      }
+      .status-label {
+        color: #a0a0a0;
+      }
+      .status-value {
+        font-weight: 500;
+      }
+      .status-value.connected {
+        color: #4ade80;
+      }
+      .status-value.disconnected {
+        color: #f87171;
+      }
+      .actions {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      button {
+        width: 100%;
+        padding: 10px;
+        border: none;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.15s ease;
+      }
+      button.primary {
+        background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+        color: #fff;
+      }
+      button.primary:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+      }
+      button.secondary {
+        background: rgba(255, 255, 255, 0.08);
+        color: #e8e8e8;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+      button.secondary:hover {
+        background: rgba(255, 255, 255, 0.12);
+      }
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none !important;
+      }
+      .hint {
+        margin-top: 14px;
+        padding: 10px;
+        background: rgba(99, 102, 241, 0.1);
+        border-radius: 8px;
+        font-size: 11px;
+        color: #a5b4fc;
+        line-height: 1.5;
+      }
+      .hint a {
+        color: #c4b5fd;
+      }
+      #message {
+        margin-top: 10px;
+        font-size: 12px;
+        color: #a0a0a0;
+        text-align: center;
+        min-height: 16px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <img src="icons/icon-48.png" alt="Tab Cleanser" />
+      <h1>Tab Cleanser</h1>
+    </div>
+
+    <div class="status-card">
+      <div class="status-row">
+        <span class="status-label">Desktop App</span>
+        <span id="connectionStatus" class="status-value disconnected">Checking...</span>
+      </div>
+      <div class="status-row">
+        <span class="status-label">Tabs Tracked</span>
+        <span id="tabCount" class="status-value">0</span>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button id="captureBtn" class="primary" disabled title="截图当前 Tab 并发送到桌面应用">📸 Capture Current Tab</button>
+      <button id="syncBtn" class="secondary" disabled title="将所有打开的 Tab 发送到桌面应用（用于首次同步）">🔄 Sync All Tabs</button>
+    </div>
+
+    <div id="message"></div>
+
+    <div class="hint" id="hint">
+      Start the Tab Cleanser desktop app to enable AI analysis and daily reports.
+    </div>
+
+    <script src="popup.js"></script>
+  </body>
+</html>

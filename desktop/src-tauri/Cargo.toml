@@ -1,0 +1,30 @@
+[package]
+name = "tab-cleanser"
+version = "0.1.0"
+description = "AI-powered tab cleanup and daily browsing reports"
+authors = ["you"]
+license = ""
+repository = ""
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [ "tray-icon"] }
+tauri-plugin-shell = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["full"] }
+tokio-util = { version = "0.7", features = ["io"] }
+axum = { version = "0.7", features = ["ws"] }
+futures-util = "0.3"
+tower-http = { version = "0.5", features = ["cors"] }
+reqwest = { version = "0.12", features = ["json"] }
+chrono = { version = "0.4", features = ["serde"] }
+base64 = "0.22"
+uuid = { version = "1", features = ["v4"] }
+directories = "5"
+
+[features]
+custom-protocol = ["tauri/custom-protocol"]
