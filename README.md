@@ -1,104 +1,49 @@
-# Tab Cleanser
+<p align="center">
+  <img src="extension/icons/icon-128.png" alt="Tab Cleanser Logo" width="80" height="80">
+</p>
 
-AI-powered Chrome tab cleanup and daily browsing reports.
+<h1 align="center">Tab Cleanser</h1>
 
-## Architecture
+<p align="center">
+  <strong>AI-powered browser tab management</strong><br>
+  Automatically analyze, categorize, and clean up your Chrome tabs with GPT-4
+</p>
 
-```
-tab_cleanser/
-├── extension/     # Chrome Extension (lightweight data collector)
-│   └── src/
-│       ├── background.ts     # Main service worker
-│       ├── content.ts        # Content script for text extraction
-│       ├── popup.ts          # Popup UI
-│       └── modules/          # Modular components
-│           ├── types.ts      # Type definitions
-│           ├── config.ts     # Configuration constants
-│           ├── state.ts      # State management
-│           ├── server.ts     # HTTP communication
-│           ├── screenshot.ts # Screenshot capture
-│           ├── timer.ts      # Active time tracking
-│           ├── handlers.ts   # Tab event handlers
-│           ├── websocket.ts  # WebSocket connection
-│           └── sync.ts       # Tab synchronization
-│
-└── desktop/       # Tauri Desktop App (AI analysis + UI)
-    ├── src/                  # TypeScript frontend
-    │   ├── main.ts           # Entry point
-    │   ├── types.ts          # Type definitions
-    │   ├── state.ts          # Application state
-    │   ├── api.ts            # Tauri API wrapper
-    │   ├── utils.ts          # Utility functions
-    │   ├── views/            # View components
-    │   └── components/       # UI components
-    │
-    └── src-tauri/src/        # Rust backend
-        ├── main.rs           # Tauri commands
-        ├── server.rs         # HTTP + WebSocket server
-        ├── storage.rs        # Data persistence
-        └── ai.rs             # OpenAI integration
-```
+<p align="center">
+  <a href="#features">Features</a> •
+  <a href="#quick-start">Quick Start</a> •
+  <a href="#how-it-works">How It Works</a> •
+  <a href="#configuration">Configuration</a> •
+  <a href="#contributing">Contributing</a>
+</p>
 
-## System Data Flow
+---
 
-```mermaid
-flowchart TB
-    subgraph ChromeExtension [Chrome Extension]
-        BG[background.ts<br/>Service Worker]
-        CS[content.ts<br/>Content Script]
-        PP[popup.ts<br/>Popup UI]
-    end
+## ✨ Features
 
-    subgraph TauriDesktop [Tauri Desktop App]
-        subgraph Backend [Rust Backend]
-            SRV[server.rs<br/>HTTP + WebSocket]
-            STG[storage.rs<br/>Data Persistence]
-            AI[ai.rs<br/>OpenAI Integration]
-        end
-        subgraph Frontend [TypeScript Frontend]
-            UI[main.ts<br/>UI Rendering]
-        end
-    end
+| Feature | Description |
+|---------|-------------|
+| 🤖 **AI Tab Analysis** | GPT-4 analyzes your tabs and suggests which to keep or close |
+| 📸 **Smart Screenshots** | Auto-captures tab screenshots when you stay 3+ seconds |
+| ⏱️ **Activity Tracking** | Tracks time spent on each tab |
+| 📊 **Daily Reports** | AI-generated summaries of your browsing activity |
+| 🏷️ **Auto-Categorization** | Classifies tabs: work, research, entertainment, etc. |
+| 🔒 **Privacy-First** | All data stays on your machine; you use your own OpenAI key |
 
-    BG -->|"POST /capture<br/>(tab + screenshot)"| SRV
-    BG -->|"POST /event<br/>(tab events)"| SRV
-    SRV -->|"WebSocket<br/>refresh_all"| BG
-    CS -->|extractContent| BG
-    PP -->|getStatus<br/>forceCapture| BG
-    
-    SRV --> STG
-    STG --> AI
-    UI -->|"Tauri invoke"| Backend
-    SRV -->|"emit events"| UI
-```
+<p align="center">
+  <img src="docs/screenshot-tabs.png" alt="Tab Cleanser Screenshot" width="800">
+</p>
 
-### Core Data Flow
+---
 
-1. **Tab Event Capture**: Extension monitors `tabs.onCreated/Updated/Activated/Removed`
-2. **Screenshot Capture**: Auto-captures after user stays on tab for 3+ seconds
-3. **Data Sync**: HTTP POST to Desktop App (port 21890)
-4. **AI Analysis**: Desktop calls OpenAI API to analyze tabs
-5. **Bidirectional Communication**: WebSocket for Desktop → Extension commands
+## 🚀 Quick Start
 
-## API Endpoints
+### Prerequisites
 
-The desktop app exposes a local HTTP server on port `21890`:
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/health` | GET | Health check |
-| `/capture` | POST | Receive tab capture with screenshot |
-| `/event` | POST | Receive tab events (created, updated, activated, removed) |
-| `/screenshot/:filename` | GET | Serve screenshot images |
-| `/ws` | WebSocket | Bidirectional communication |
-
-## Prerequisites
-
-- Node.js 18+
-- Rust (for Tauri): https://www.rust-lang.org/tools/install
-- Tauri prerequisites: https://tauri.app/v1/guides/getting-started/prerequisites
-
-## Quick Start
+- **Node.js 18+**
+- **Rust** (for Tauri): [Install Rust](https://www.rust-lang.org/tools/install)
+- **Tauri prerequisites**: [Platform-specific setup](https://tauri.app/start/prerequisites/)
+- **Chrome Browser**
 
 ### 1. Build the Chrome Extension
 
@@ -108,18 +53,18 @@ npm install
 npm run build
 ```
 
-Then load `extension/dist` as an unpacked extension in Chrome:
-- Go to `chrome://extensions`
-- Enable "Developer mode"
-- Click "Load unpacked"
-- Select the `extension/dist` folder
+Load the extension in Chrome:
+1. Go to `chrome://extensions`
+2. Enable **Developer mode** (top right)
+3. Click **Load unpacked**
+4. Select the `extension/dist` folder
 
 ### 2. Build and Run the Desktop App
 
 ```bash
 cd desktop
 npm install
-npm run tauri dev
+npm run tauri dev    # Development mode
 ```
 
 For production build:
@@ -127,41 +72,150 @@ For production build:
 npm run tauri build
 ```
 
-## Configuration
+### 3. Configure
 
 1. Open the desktop app
-2. Go to Settings
-3. Enter your OpenAI API key
-4. (Optional) Set a custom Base URL for API proxy
-5. (Optional) Add your work context to improve AI decisions
-6. Save settings
+2. Go to **Settings**
+3. Enter your **OpenAI API key**
+4. (Optional) Add your work context to improve AI suggestions
+5. Click **Save**
 
-## Usage
+---
 
-1. Browse the web normally - the extension tracks your tabs
-2. Open the desktop app to see tracked tabs with screenshots
-3. Click "Analyze with AI" to get keep/close suggestions
-4. Click "Generate Report" for a daily activity summary
-5. Use Keep/Close buttons to manage individual tabs
+## 🔄 How It Works
 
-## Features
+```
+┌─────────────────┐         ┌────────────────────────────────────────┐
+│  Chrome Browser │         │          Desktop App (Tauri)           │
+│                 │         │                                        │
+│  ┌───────────┐  │   HTTP  │  ┌──────────┐  ┌─────────┐  ┌──────┐  │
+│  │ Extension │──┼────────►│  │  Server  │─►│ Storage │─►│  AI  │  │
+│  │           │◄─┼─WebSocket│  └──────────┘  └─────────┘  └──────┘  │
+│  └───────────┘  │         │                      │                │
+│                 │         │              ┌───────▼───────┐        │
+│                 │         │              │   Frontend    │        │
+│                 │         │              │   (Web UI)    │        │
+└─────────────────┘         └──────────────┴───────────────┴────────┘
+```
 
-- **Smart Tab Tracking**: Monitors tab activity, including time spent and last active timestamp
-- **Automatic Screenshots**: Captures tab screenshots when you stay on a tab for 3+ seconds
-- **AI-Powered Analysis**: Uses OpenAI to categorize tabs and suggest which to keep/close
-- **Daily Reports**: Generates AI summaries of your browsing activity
-- **Context-Aware**: Customize AI behavior with your work context and preferences
-- **History View**: See tabs closed today for daily report generation
+1. **Extension tracks** tab events (open, switch, close)
+2. **Auto-captures** screenshots + page content after 3s on a tab
+3. **Sends data** to local desktop app via HTTP
+4. **Desktop stores** everything locally in JSON files
+5. **AI analyzes** tabs on demand using your OpenAI API key
+6. **WebSocket** allows desktop to send commands back (close tabs)
 
-## Ports
+---
 
-- Extension sends data to `http://localhost:21890`
-- Desktop app frontend runs on `http://localhost:5173` (dev mode)
+## ⚙️ Configuration
 
-## Integration with Chrome Control MCP
+### Settings Panel
 
-Tab Cleanser can work alongside the [Chrome Control MCP Extension](https://github.com/anthropic/chrome-control) for Claude Desktop. While Tab Cleanser analyzes and suggests tabs to close, Chrome Control allows Claude to actually execute browser actions like closing tabs.
+| Setting | Description | Default |
+|---------|-------------|---------|
+| **OpenAI API Key** | Your API key for GPT-4 | Required |
+| **Base URL** | Custom API endpoint (for proxies) | `https://api.openai.com/v1` |
+| **Model** | OpenAI model to use | `gpt-4o-mini` |
+| **Batch Size** | Tabs to analyze per batch | `30` |
+| **User Context** | Your work context for better AI suggestions | - |
 
-## License
+### User Context Example
 
-MIT
+```
+I'm a software developer working on a React project.
+Keep tabs related to: React, TypeScript, Node.js documentation
+Close tabs: social media, news sites idle for >30min
+Important projects: tab-cleanser, my-portfolio
+```
+
+---
+
+## 🏗️ Project Structure
+
+```
+tab_cleanser/
+├── extension/          # Chrome Extension (TypeScript)
+│   ├── src/
+│   │   ├── background.ts    # Service worker
+│   │   ├── content.ts       # Content extraction
+│   │   └── modules/         # Feature modules
+│   └── manifest.json
+│
+├── desktop/            # Tauri Desktop App
+│   ├── src/            # Frontend (TypeScript + Vite)
+│   │   ├── views/      # UI pages
+│   │   └── components/ # UI components
+│   └── src-tauri/src/  # Backend (Rust)
+│       ├── server.rs   # HTTP + WebSocket server
+│       ├── storage.rs  # Data persistence
+│       └── ai.rs       # OpenAI integration
+│
+├── shared/             # Shared TypeScript types
+└── docs/               # Documentation
+```
+
+> 📖 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for detailed technical documentation.
+
+---
+
+## 📡 API Endpoints
+
+The desktop app runs a local server on port `21890`:
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/health` | GET | Health check |
+| `/capture` | POST | Receive tab capture |
+| `/event` | POST | Receive tab events |
+| `/screenshot/:filename` | GET | Serve screenshots |
+| `/ws` | WebSocket | Bidirectional commands |
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! Please read our [Contributing Guide](CONTRIBUTING.md) first.
+
+```bash
+# Fork and clone
+git clone https://github.com/YOUR_USERNAME/tab-cleanser.git
+
+# Create feature branch
+git checkout -b feature/amazing-feature
+
+# Make changes and commit
+git commit -m "feat: add amazing feature"
+
+# Push and create PR
+git push origin feature/amazing-feature
+```
+
+### Development
+
+```bash
+# Extension (with watch mode)
+cd extension && npm run watch
+
+# Desktop (with hot reload)
+cd desktop && npm run tauri dev
+```
+
+---
+
+## 📄 License
+
+MIT License - see [LICENSE](LICENSE) for details.
+
+---
+
+## 🙏 Acknowledgments
+
+- [Tauri](https://tauri.app/) - Desktop app framework
+- [OpenAI](https://openai.com/) - AI analysis
+- [Axum](https://github.com/tokio-rs/axum) - Rust web framework
+
+---
+
+<p align="center">
+  <sub>Built with ❤️ for tab hoarders everywhere</sub>
+</p>
