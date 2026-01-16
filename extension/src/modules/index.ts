@@ -1,5 +1,5 @@
 /**
- * Tab Cleanser Extension - Module Exports
+ * Tabula Extension - Module Exports
  */
 
 export * from "./types";

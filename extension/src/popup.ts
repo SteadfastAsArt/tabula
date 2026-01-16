@@ -37,7 +37,7 @@ async function updateStatus(): Promise<void> {
     connectionStatus.className = "status-value disconnected";
     captureBtn.disabled = true;
     syncBtn.disabled = true;
-    hintEl.textContent = "Start the Tab Cleanser desktop app to enable AI analysis and daily reports.";
+    hintEl.textContent = "Start the Tabula desktop app to enable AI analysis and daily reports.";
   }
 
   tabCount.textContent = String(status.tabCount);

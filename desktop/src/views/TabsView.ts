@@ -1,5 +1,5 @@
 /**
- * Tab Cleanser Desktop - Tabs View
+ * Tabula Desktop - Tabs View
  */
 
 import type { TabRecord, Settings, SortField, SortOrder } from "../types";

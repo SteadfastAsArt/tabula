@@ -1,5 +1,5 @@
 /**
- * Tab Cleanser Extension - Active Time Tracking
+ * Tabula Extension - Active Time Tracking
  */
 
 import { TabData } from "./types";

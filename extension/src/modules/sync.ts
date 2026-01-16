@@ -1,5 +1,5 @@
 /**
- * Tab Cleanser Extension - Tab Sync Logic
+ * Tabula Extension - Tab Sync Logic
  */
 
 import { TabEvent } from "./types";
@@ -76,5 +76,5 @@ export async function syncAllTabs(): Promise<void> {
     scheduleScreenshot(activeTab.id);
   }
 
-  console.log(`[TabCleanser] Sync complete: ${newCount} new, ${updatedCount} updated, ${Object.keys(newTabs).length} total`);
+  console.log(`[Tabula] Sync complete: ${newCount} new, ${updatedCount} updated, ${Object.keys(newTabs).length} total`);
 }

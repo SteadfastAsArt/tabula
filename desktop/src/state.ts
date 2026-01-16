@@ -1,5 +1,5 @@
 /**
- * Tab Cleanser Desktop - Application State
+ * Tabula Desktop - Application State
  */
 
 import type {

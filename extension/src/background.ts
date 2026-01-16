@@ -1,5 +1,5 @@
 /**
- * Tab Cleanser Extension - Background Service Worker
+ * Tabula Extension - Background Service Worker
  *
  * Key features:
  * 1. Use chrome.storage.local to persist data (MV3 service workers can die anytime)
@@ -109,4 +109,4 @@ syncAllTabs().catch(console.error);
 // Connect to WebSocket for receiving commands from desktop app
 connectWebSocket();
 
-console.log("[TabCleanser] Background service worker started");
+console.log("[Tabula] Background service worker started");

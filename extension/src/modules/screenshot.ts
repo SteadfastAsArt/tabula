@@ -1,5 +1,5 @@
 /**
- * Tab Cleanser Extension - Screenshot Capture Logic
+ * Tabula Extension - Screenshot Capture Logic
  */
 
 import { CapturePayload, TabEvent } from "./types";

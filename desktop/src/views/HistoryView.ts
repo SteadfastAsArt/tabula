@@ -1,5 +1,5 @@
 /**
- * Tab Cleanser Desktop - History View
+ * Tabula Desktop - History View
  */
 
 import type { TabRecord } from "../types";

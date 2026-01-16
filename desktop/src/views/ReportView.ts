@@ -1,5 +1,5 @@
 /**
- * Tab Cleanser Desktop - Report View
+ * Tabula Desktop - Report View
  */
 
 import type { DailyReport } from "../types";

@@ -1,5 +1,5 @@
 /**
- * Tab Cleanser Desktop - Main Entry Point
+ * Tabula Desktop - Main Entry Point
  */
 
 import { listen } from "@tauri-apps/api/event";

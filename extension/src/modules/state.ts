@@ -1,5 +1,5 @@
 /**
- * Tab Cleanser Extension - State Management
+ * Tabula Extension - State Management
  * 
  * Uses chrome.storage.local to persist data (MV3 service workers can die anytime)
  */

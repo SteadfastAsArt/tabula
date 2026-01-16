@@ -1,5 +1,5 @@
 /**
- * Tab Cleanser Extension - Server Communication
+ * Tabula Extension - Server Communication
  */
 
 import { SERVER_URL } from "./config";
@@ -16,7 +16,7 @@ export async function sendToServer(
     });
     return response.ok;
   } catch (e) {
-    console.log(`[TabCleanser] Failed to send to ${endpoint}:`, e);
+    console.log(`[Tabula] Failed to send to ${endpoint}:`, e);
     return false;
   }
 }

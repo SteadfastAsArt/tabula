@@ -1,5 +1,5 @@
 /**
- * Tab Cleanser Desktop - Tauri API Wrapper
+ * Tabula Desktop - Tauri API Wrapper
  */
 
 import { invoke } from "@tauri-apps/api/core";

@@ -1,5 +1,5 @@
 /**
- * Tab Cleanser Extension - WebSocket Connection Management
+ * Tabula Extension - WebSocket Connection Management
  */
 
 import { CapturePayload, TabEvent } from "./types";
@@ -173,7 +173,7 @@ async function refreshAllScreenshots(): Promise<void> {
   }
 
   console.log(
-    `[TabCleanser] Refresh complete: ${capturedCount} screenshots, ${syncedCount} tabs synced` +
+    `[Tabula] Refresh complete: ${capturedCount} screenshots, ${syncedCount} tabs synced` +
     (failedCount > 0 ? `, ${failedCount} failed` : "") +
     (skippedCount > 0 ? `, ${skippedCount} skipped` : "")
   );

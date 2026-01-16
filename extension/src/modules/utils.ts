@@ -1,5 +1,5 @@
 /**
- * Tab Cleanser Extension - Utility Functions
+ * Tabula Extension - Utility Functions
  */
 
 import { TabData, StoredState } from "./types";

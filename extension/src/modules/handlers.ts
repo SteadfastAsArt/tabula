@@ -1,5 +1,5 @@
 /**
- * Tab Cleanser Extension - Tab Event Handlers
+ * Tabula Extension - Tab Event Handlers
  */
 
 import { TabData, TabEvent } from "./types";

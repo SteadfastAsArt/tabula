@@ -1,5 +1,5 @@
 /**
- * Tab Cleanser Desktop - Sidebar Component
+ * Tabula Desktop - Sidebar Component
  */
 
 import type { ViewType, TabRecord } from "../types";
@@ -19,7 +19,7 @@ export function renderSidebar(
           <path d="M3 9h18"/>
           <path d="M9 21V9"/>
         </svg>
-        <span>Tab Cleanser</span>
+        <span>Tabula</span>
       </div>
       <nav class="nav">
         <button class="nav-item ${currentView === "tabs" ? "active" : ""}" data-view="tabs">

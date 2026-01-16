@@ -52,7 +52,7 @@ Tabula is a two-component system:
 │                                    PROJECT STRUCTURE                                 │
 ├──────────────────────────────────────────────────────────────────────────────────────┤
 │                                                                                      │
-│  tab_cleanser/                                                                       │
+│  tabula/                                                                             │
 │  │                                                                                   │
 │  ├── extension/                    # Chrome Extension (MV3)                          │
 │  │   ├── src/                                                                        │
@@ -416,9 +416,9 @@ pub struct TabRecord {
 ### File Locations
 
 ```
-~/.local/share/tab-cleanser/        # Linux
-~/Library/Application Support/tab-cleanser/  # macOS
-%APPDATA%/tab-cleanser/             # Windows
+~/.local/share/tabula/              # Linux
+~/Library/Application Support/tabula/        # macOS
+%APPDATA%/tabula/                   # Windows
 
 ├── tabs.json           # Tab records
 ├── settings.json       # User configuration

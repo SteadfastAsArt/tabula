@@ -1,5 +1,5 @@
 /**
- * Tab Cleanser Desktop - Settings View
+ * Tabula Desktop - Settings View
  */
 
 import type { Settings } from "../types";
@@ -47,7 +47,7 @@ export function renderSettingsView(settings: Settings): string {
 I'm a software developer working on a React project.
 Keep tabs related to: React, TypeScript, Node.js documentation
 Close tabs: social media, news sites idle for >30min
-Important projects: tab-cleanser, my-portfolio">${settings.user_context || ""}</textarea>
+Important projects: tabula, my-portfolio">${settings.user_context || ""}</textarea>
             </div>
           </div>
 

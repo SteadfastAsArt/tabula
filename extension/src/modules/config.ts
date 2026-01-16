@@ -1,5 +1,5 @@
 /**
- * Tab Cleanser Extension - Configuration Constants
+ * Tabula Extension - Configuration Constants
  */
 
 export const SERVER_URL = "http://localhost:21890";

@@ -1,5 +1,5 @@
 /**
- * Tab Cleanser - Shared Type Definitions
+ * Tabula - Shared Type Definitions
  *
  * These types are shared between the Chrome Extension and Desktop App
  * to ensure consistency in data structures across the system.

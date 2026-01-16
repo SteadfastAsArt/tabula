@@ -1,5 +1,5 @@
 /**
- * Tab Cleanser Desktop - Utility Functions
+ * Tabula Desktop - Utility Functions
  */
 
 import type { TabRecord, SortField, SortOrder } from "./types";

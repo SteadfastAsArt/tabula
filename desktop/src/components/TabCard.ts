@@ -1,5 +1,5 @@
 /**
- * Tab Cleanser Desktop - Tab Card Component
+ * Tabula Desktop - Tab Card Component
  */
 
 import type { TabRecord } from "../types";

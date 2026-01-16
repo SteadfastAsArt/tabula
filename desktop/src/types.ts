@@ -1,5 +1,5 @@
 /**
- * Tab Cleanser Desktop - Type Definitions
+ * Tabula Desktop - Type Definitions
  */
 
 export interface TabSnapshot {

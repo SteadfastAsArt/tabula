@@ -1,5 +1,5 @@
 /**
- * Tab Cleanser Extension - Type Definitions
+ * Tabula Extension - Type Definitions
  */
 
 export interface TabData {
