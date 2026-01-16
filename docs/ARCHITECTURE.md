@@ -1,6 +1,6 @@
-# Tab Cleanser - Technical Architecture
+# Tabula — Technical Architecture
 
-> AI-powered browser tab management system
+> Your AI-powered second brain for browser tabs
 
 ## Table of Contents
 
@@ -17,7 +17,7 @@
 
 ## System Overview
 
-Tab Cleanser is a two-component system:
+Tabula is a two-component system:
 
 | Component | Role | Tech |
 |-----------|------|------|
@@ -26,7 +26,7 @@ Tab Cleanser is a two-component system:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                            Tab Cleanser System                              │
+│                               Tabula System                                 │
 ├─────────────────────────────┬───────────────────────────────────────────────┤
 │      Chrome Extension       │             Tauri Desktop App                 │
 │   ┌─────────────────────┐   │   ┌─────────────────┐   ┌─────────────────┐  │

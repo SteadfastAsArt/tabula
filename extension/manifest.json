@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Tab Cleanser",
+  "name": "Tabula",
   "version": "0.2.0",
-  "description": "Collect tab data and send to Tab Cleanser desktop app.",
+  "description": "AI-powered tab intelligence. Captures and syncs tab data with Tabula desktop.",
   "permissions": ["tabs", "scripting", "storage", "idle", "activeTab"],
   "host_permissions": ["<all_urls>", "http://localhost:21890/*"],
   "background": {
@@ -11,7 +11,7 @@
   },
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Tab Cleanser"
+    "default_title": "Tabula"
   },
   "icons": {
     "16": "icons/icon-16.png",

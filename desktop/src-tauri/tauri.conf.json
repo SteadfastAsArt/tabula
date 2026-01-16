@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Tab Cleanser",
+  "productName": "Tabula",
   "version": "0.1.0",
-  "identifier": "com.tabcleanser.app",
+  "identifier": "com.tabula.app",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:5173",
@@ -13,7 +13,7 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "Tab Cleanser",
+        "title": "Tabula",
         "width": 1000,
         "height": 700,
         "minWidth": 800,

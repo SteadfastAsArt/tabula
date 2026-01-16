@@ -1,4 +1,4 @@
-# Contributing to Tab Cleanser
+# Contributing to Tabula
 
 Thank you for your interest in contributing! Here's how you can help.
 
@@ -6,8 +6,8 @@ Thank you for your interest in contributing! Here's how you can help.
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/YOUR_USERNAME/tab-cleanser.git
-   cd tab-cleanser
+   git clone https://github.com/YOUR_USERNAME/tabula.git
+   cd tabula
    ```
 
 2. **Install dependencies**
