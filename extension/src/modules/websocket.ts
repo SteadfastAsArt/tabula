@@ -193,6 +193,7 @@ export function connectWebSocket(): void {
   ws = new WebSocket(WS_URL);
 
   ws.onopen = () => {
+    console.log("[Tabula] WebSocket connected to desktop app");
     // Clear any pending reconnect
     if (wsReconnectTimeout) {
       clearTimeout(wsReconnectTimeout);
@@ -230,11 +231,12 @@ export function connectWebSocket(): void {
 
   ws.onclose = () => {
     ws = null;
+    console.log("[Tabula] WebSocket disconnected, will retry in 5s...");
     scheduleReconnect();
   };
 
   ws.onerror = () => {
-    // onclose will be called after this
+    // onclose will be called after this, suppress the default error
   };
 }
 

@@ -49,7 +49,7 @@
 <td width="50%">
 
 ### 🤖 AI-Powered Analysis
-GPT-4 analyzes your tabs based on:
+AI models analyzes your tabs based on:
 - Page content and metadata
 - Time since last activity  
 - Your personal work context

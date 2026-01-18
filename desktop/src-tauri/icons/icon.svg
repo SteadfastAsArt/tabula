@@ -1,0 +1,61 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background with gradient -->
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#6366f1"/>
+      <stop offset="100%" style="stop-color:#8b5cf6"/>
+    </linearGradient>
+    <linearGradient id="tabGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffffff"/>
+      <stop offset="100%" style="stop-color:#e0e7ff"/>
+    </linearGradient>
+    <linearGradient id="sparkGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#fbbf24"/>
+      <stop offset="100%" style="stop-color:#f59e0b"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+  
+  <!-- Rounded square background -->
+  <rect x="32" y="32" width="448" height="448" rx="96" fill="url(#bgGrad)"/>
+  
+  <!-- Stacked tabs effect - back tab -->
+  <rect x="100" y="140" width="280" height="200" rx="16" fill="#c7d2fe" opacity="0.6" transform="rotate(-6 240 240)"/>
+  
+  <!-- Middle tab -->
+  <rect x="100" y="140" width="280" height="200" rx="16" fill="#e0e7ff" opacity="0.8" transform="rotate(-3 240 240)"/>
+  
+  <!-- Front tab (main) -->
+  <g filter="url(#shadow)">
+    <rect x="100" y="140" width="280" height="200" rx="16" fill="url(#tabGrad)"/>
+    
+    <!-- Tab header bar -->
+    <rect x="100" y="140" width="280" height="40" rx="16" fill="#6366f1" opacity="0.15"/>
+    <rect x="100" y="164" width="280" height="16" fill="url(#tabGrad)"/>
+    
+    <!-- Browser tab shapes at top -->
+    <path d="M116 140 L116 156 Q116 164 124 164 L164 164 Q172 164 172 156 L172 140" fill="#6366f1" opacity="0.3"/>
+    <path d="M180 140 L180 156 Q180 164 188 164 L228 164 Q236 164 236 156 L236 140" fill="#6366f1" opacity="0.2"/>
+    
+    <!-- Content lines -->
+    <rect x="124" y="188" width="180" height="12" rx="6" fill="#6366f1" opacity="0.2"/>
+    <rect x="124" y="212" width="140" height="12" rx="6" fill="#6366f1" opacity="0.15"/>
+    <rect x="124" y="236" width="200" height="12" rx="6" fill="#6366f1" opacity="0.1"/>
+    <rect x="124" y="260" width="100" height="12" rx="6" fill="#6366f1" opacity="0.1"/>
+  </g>
+  
+  <!-- AI sparkle/star icon -->
+  <g transform="translate(320, 280)">
+    <circle cx="40" cy="40" r="44" fill="url(#sparkGrad)" filter="url(#shadow)"/>
+    <!-- Star shape for AI -->
+    <path d="M40 12 L44 32 L64 28 L48 40 L60 56 L40 48 L20 56 L32 40 L16 28 L36 32 Z" 
+          fill="white" opacity="0.95"/>
+  </g>
+  
+  <!-- Small floating dots for decoration -->
+  <circle cx="420" cy="100" r="8" fill="white" opacity="0.4"/>
+  <circle cx="380" cy="130" r="5" fill="white" opacity="0.3"/>
+  <circle cx="100" cy="380" r="6" fill="white" opacity="0.3"/>
+</svg>
