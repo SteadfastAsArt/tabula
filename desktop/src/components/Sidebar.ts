@@ -22,6 +22,7 @@ export function renderSidebar(
         <span>Tabula</span>
       </div>
       <nav class="nav">
+        <div class="nav-section-label">Views</div>
         <button class="nav-item ${currentView === "tabs" ? "active" : ""}" data-view="tabs">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <rect x="3" y="3" width="7" height="9" rx="1"/>
@@ -31,6 +32,15 @@ export function renderSidebar(
           </svg>
           Open Tabs
         </button>
+        <button class="nav-item ${currentView === "stats" ? "active" : ""}" data-view="stats">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 20V10"/>
+            <path d="M12 20V4"/>
+            <path d="M6 20v-6"/>
+          </svg>
+          Stats
+        </button>
+        <div class="nav-section-label">Tools</div>
         <button class="nav-item ${currentView === "history" ? "active" : ""}" data-view="history">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="10"/>

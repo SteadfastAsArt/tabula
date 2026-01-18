@@ -50,8 +50,41 @@ export type SortField =
   | "title"
   | "active_time"
   | "has_screenshot"
-  | "has_analysis";
+  | "has_analysis"
+  | "category";
 
 export type SortOrder = "asc" | "desc";
 
-export type ViewType = "tabs" | "history" | "report" | "settings";
+export type ViewType = "tabs" | "stats" | "history" | "report" | "settings";
+
+export type TabCategory =
+  | "work"
+  | "research"
+  | "communication"
+  | "entertainment"
+  | "shopping"
+  | "reference"
+  | "utility"
+  | "uncategorized";
+
+export interface CategoryInfo {
+  id: TabCategory;
+  label: string;
+  icon: string;
+  color: string;
+}
+
+export interface TabStats {
+  totalTabs: number;
+  totalActiveTime: number;
+  avgActiveTime: number;
+  avgAge: number;
+  oldestTab: number;
+  newestTab: number;
+  withScreenshots: number;
+  analyzed: number;
+  categoryCounts: Record<TabCategory, number>;
+  suggestionCounts: { keep: number; close: number; unsure: number };
+  activeTimeDistribution: { under1m: number; under5m: number; under30m: number; over30m: number };
+  ageDistribution: { under1h: number; under1d: number; under7d: number; over7d: number };
+}

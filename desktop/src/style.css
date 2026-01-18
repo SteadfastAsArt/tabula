@@ -864,3 +864,334 @@ body {
   gap: 16px;
   flex-wrap: wrap;
 }
+
+/* Navigation Section Labels */
+.nav-section-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  padding: 16px 12px 6px;
+  margin-top: 4px;
+}
+
+.nav-section-label:first-child {
+  margin-top: 0;
+  padding-top: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   GROUPED VIEW STYLES
+   ═══════════════════════════════════════════════════════════════ */
+
+.grouped-container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.category-group {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.category-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: var(--bg-tertiary);
+  border-bottom: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.category-header:hover {
+  background: var(--bg-hover);
+}
+
+.category-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.category-icon {
+  font-size: 18px;
+}
+
+.category-name {
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--text-primary);
+}
+
+.category-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--category-color, var(--accent-primary));
+  color: white;
+  border-radius: 12px;
+}
+
+.btn-collapse {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-collapse:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.btn-collapse svg {
+  transition: transform 0.2s ease;
+}
+
+.category-tabs.collapsed .btn-collapse svg {
+  transform: rotate(-90deg);
+}
+
+.category-tabs {
+  padding: 16px;
+  transition: all 0.2s ease;
+}
+
+.category-tabs.collapsed {
+  display: none;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   STATS VIEW STYLES
+   ═══════════════════════════════════════════════════════════════ */
+
+.stats-container {
+  max-width: 900px;
+}
+
+.stats-section {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  margin-bottom: 20px;
+}
+
+.stats-section h2 {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 20px;
+  color: var(--text-primary);
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.stats-grid.cols-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.stats-grid.cols-2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.stat-card {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  text-align: center;
+  transition: all 0.15s ease;
+}
+
+.stat-card:hover {
+  border-color: var(--accent-primary);
+  transform: translateY(-2px);
+}
+
+.stat-card-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.stat-card-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-card-percent {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 8px;
+}
+
+/* Suggestion Cards */
+.stat-card.suggestion-keep {
+  border-color: rgba(34, 197, 94, 0.3);
+}
+
+.stat-card.suggestion-keep .stat-card-value {
+  color: var(--success);
+}
+
+.stat-card.suggestion-close {
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.stat-card.suggestion-close .stat-card-value {
+  color: var(--danger);
+}
+
+.stat-card.suggestion-unsure {
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+.stat-card.suggestion-unsure .stat-card-value {
+  color: var(--warning);
+}
+
+/* Progress Bars */
+.progress-bar {
+  height: 6px;
+  background: var(--bg-hover);
+  border-radius: 3px;
+  margin-top: 12px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.progress-bar-fill.progress-keep {
+  background: var(--success);
+}
+
+.progress-bar-fill.progress-close {
+  background: var(--danger);
+}
+
+.progress-bar-fill.progress-unsure {
+  background: var(--warning);
+}
+
+/* Category Bars */
+.category-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.category-bar-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.category-bar-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.category-bar-label .category-icon {
+  font-size: 14px;
+}
+
+.category-bar-count {
+  margin-left: auto;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.category-bar-track {
+  height: 8px;
+  background: var(--bg-hover);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.category-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+/* Distribution Chart */
+.distribution-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.distribution-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.distribution-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.distribution-value {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.distribution-bar-track {
+  height: 10px;
+  background: var(--bg-hover);
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.distribution-bar-fill {
+  height: 100%;
+  border-radius: 5px;
+  transition: width 0.3s ease;
+}
+
+/* Responsive adjustments */
+@media (max-width: 800px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .stats-grid.cols-3 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

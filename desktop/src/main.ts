@@ -10,6 +10,7 @@ import * as state from "./state";
 import * as api from "./api";
 import { renderSidebar } from "./components/Sidebar";
 import { renderTabsView } from "./views/TabsView";
+import { renderStatsView } from "./views/StatsView";
 import { renderHistoryView } from "./views/HistoryView";
 import { renderReportView } from "./views/ReportView";
 import { renderSettingsView } from "./views/SettingsView";
@@ -28,6 +29,8 @@ function renderContent(): string {
         state.sortOrder,
         state.currentPage
       );
+    case "stats":
+      return renderStatsView(state.tabs);
     case "history":
       return renderHistoryView(state.closedTabs);
     case "report":
