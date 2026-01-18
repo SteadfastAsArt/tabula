@@ -9,6 +9,21 @@ import { now, createTabData, updateTabFromChrome } from "./utils";
 import { scheduleScreenshot } from "./screenshot";
 
 /**
+ * Extract description from a tab's content script
+ */
+async function extractDescription(tabId: number): Promise<string | undefined> {
+  try {
+    const response = await chrome.tabs.sendMessage(tabId, {
+      type: "extractDescription",
+    });
+    return response?.description;
+  } catch {
+    // Content script not available
+    return undefined;
+  }
+}
+
+/**
  * Sync all tabs with the server
  * Called on extension startup to ensure server has current state
  */
@@ -35,13 +50,19 @@ export async function syncAllTabs(): Promise<void> {
 
     chromeTabIds.push(chromeTab.id);
 
+    // Extract description if page is already loaded
+    let description: string | undefined;
+    if (chromeTab.status === "complete") {
+      description = await extractDescription(chromeTab.id);
+    }
+
     // Preserve existing data if we have it
     const existing = state.tabs[String(chromeTab.id)];
     if (existing) {
-      newTabs[String(chromeTab.id)] = updateTabFromChrome(existing, chromeTab);
+      newTabs[String(chromeTab.id)] = updateTabFromChrome(existing, chromeTab, description);
       updatedCount++;
     } else {
-      newTabs[String(chromeTab.id)] = createTabData(chromeTab);
+      newTabs[String(chromeTab.id)] = createTabData(chromeTab, description);
       newCount++;
     }
 

@@ -9,6 +9,7 @@ import type {
   ViewType,
   SortField,
   SortOrder,
+  GroupMode,
 } from "./types";
 
 // Pagination constants
@@ -23,6 +24,8 @@ export let currentView: ViewType = "tabs";
 export let sortField: SortField = "last_active";
 export let sortOrder: SortOrder = "desc";
 export let currentPage: number = 0;
+export let groupMode: GroupMode = "none";
+export let collapsedGroups: Set<string> = new Set();
 
 // State setters
 export function setTabs(newTabs: TabRecord[]): void {
@@ -76,4 +79,22 @@ export function prevPage(): void {
 
 export function resetPage(): void {
   currentPage = 0;
+}
+
+export function setGroupMode(mode: GroupMode): void {
+  groupMode = mode;
+  // Reset collapsed groups when changing mode
+  collapsedGroups.clear();
+}
+
+export function toggleGroupCollapsed(groupId: string): void {
+  if (collapsedGroups.has(groupId)) {
+    collapsedGroups.delete(groupId);
+  } else {
+    collapsedGroups.add(groupId);
+  }
+}
+
+export function isGroupCollapsed(groupId: string): boolean {
+  return collapsedGroups.has(groupId);
 }

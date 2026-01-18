@@ -67,6 +67,21 @@ export async function handleCreated(chromeTab: chrome.tabs.Tab): Promise<void> {
 }
 
 /**
+ * Extract description from a tab's content script
+ */
+async function extractDescription(tabId: number): Promise<string | undefined> {
+  try {
+    const response = await chrome.tabs.sendMessage(tabId, {
+      type: "extractDescription",
+    });
+    return response?.description;
+  } catch {
+    // Content script not available (chrome:// pages, etc.)
+    return undefined;
+  }
+}
+
+/**
  * Handle tab updated event
  */
 export async function handleUpdated(
@@ -78,10 +93,16 @@ export async function handleUpdated(
   let tab = state.tabs[String(tabId)];
   const wasDiscarded = tab?.discarded;
 
+  // Extract description when page finishes loading
+  let description: string | undefined;
+  if (changeInfo.status === "complete") {
+    description = await extractDescription(tabId);
+  }
+
   if (!tab) {
-    tab = createTabData(chromeTab);
+    tab = createTabData(chromeTab, description);
   } else {
-    tab = updateTabFromChrome(tab, chromeTab);
+    tab = updateTabFromChrome(tab, chromeTab, description);
   }
 
   await updateState((s) => ({

@@ -24,6 +24,8 @@ export interface TabData {
   discarded?: boolean;
   /** Timestamp of last screenshot capture */
   lastScreenshotAt?: number;
+  /** Rich description extracted from page meta/content (max 8000 words) */
+  description?: string;
 }
 
 /**
@@ -31,8 +33,6 @@ export interface TabData {
  */
 export interface CapturePayload {
   tab: TabData;
-  /** Extracted text content from the page (max 8000 chars) */
-  text?: string;
   /** Base64-encoded JPEG screenshot */
   screenshotBase64?: string;
   capturedAt: number;
@@ -70,10 +70,9 @@ export interface TabSuggestion {
 }
 
 /**
- * Tab snapshot with captured content
+ * Tab snapshot with captured screenshot
  */
 export interface TabSnapshot {
-  text?: string;
   screenshotPath?: string;
   capturedAt: number;
 }
@@ -92,6 +91,8 @@ export interface TabRecord {
   totalActiveMs: number;
   isActive: boolean;
   closedAt?: number;
+  /** Rich description extracted from page meta/content (max 8000 words) */
+  description?: string;
   snapshot?: TabSnapshot;
   suggestion?: TabSuggestion;
 }

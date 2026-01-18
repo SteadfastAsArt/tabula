@@ -1185,6 +1185,132 @@ body {
   transition: width 0.3s ease;
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   GROUP CONTROLS
+   ═══════════════════════════════════════════════════════════════ */
+
+.group-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.group-controls label {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.group-buttons {
+  display: flex;
+  gap: 4px;
+}
+
+.btn-group {
+  padding: 6px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-group:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.btn-group.active {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: white;
+}
+
+.toolbar-divider {
+  width: 1px;
+  height: 24px;
+  background: var(--border-color);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   COLLAPSIBLE GROUP STYLES
+   ═══════════════════════════════════════════════════════════════ */
+
+.collapse-icon {
+  font-size: 10px;
+  color: var(--text-muted);
+  transition: transform 0.2s ease;
+}
+
+.collapsible {
+  cursor: pointer;
+  user-select: none;
+}
+
+.collapsible:hover {
+  background: var(--bg-hover);
+}
+
+/* Domain Group Styles */
+.domain-group {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.domain-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  background: var(--bg-tertiary);
+  border-bottom: 1px solid var(--border-color);
+  transition: background 0.15s ease;
+}
+
+.domain-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.domain-favicon {
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+}
+
+.domain-icon {
+  font-size: 14px;
+}
+
+.domain-name {
+  font-weight: 500;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.domain-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 7px;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--accent-primary);
+  color: white;
+  border-radius: 11px;
+}
+
+.domain-tabs {
+  padding: 16px;
+  transition: all 0.2s ease;
+}
+
 /* Responsive adjustments */
 @media (max-width: 800px) {
   .stats-grid {
@@ -1193,5 +1319,14 @@ body {
 
   .stats-grid.cols-3 {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .group-controls {
+    flex-wrap: wrap;
+  }
+
+  .toolbar {
+    flex-wrap: wrap;
+    gap: 12px;
   }
 }

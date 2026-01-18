@@ -9,7 +9,6 @@ use tauri::{AppHandle, Manager};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TabSnapshot {
-    pub text: Option<String>,
     pub screenshot_path: Option<String>,
     pub captured_at: i64,
 }
@@ -34,6 +33,8 @@ pub struct TabRecord {
     pub total_active_ms: i64,
     pub is_active: bool,
     pub closed_at: Option<i64>,
+    /// Rich description extracted from page meta/content (max 8000 words)
+    pub description: Option<String>,
     pub snapshot: Option<TabSnapshot>,
     pub suggestion: Option<TabSuggestion>,
 }

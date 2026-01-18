@@ -5,7 +5,7 @@
 import { listen } from "@tauri-apps/api/event";
 import "./style.css";
 
-import type { ViewType, SortField, Settings } from "./types";
+import type { ViewType, SortField, Settings, GroupMode } from "./types";
 import * as state from "./state";
 import * as api from "./api";
 import { renderSidebar } from "./components/Sidebar";
@@ -27,7 +27,8 @@ function renderContent(): string {
         state.settings,
         state.sortField,
         state.sortOrder,
-        state.currentPage
+        state.currentPage,
+        state.groupMode
       );
     case "stats":
       return renderStatsView(state.tabs);
@@ -98,6 +99,23 @@ function attachEventListeners(): void {
           state.resetPage();
           renderApp();
         }
+        return;
+      }
+
+      // Group mode buttons
+      const groupModeAttr = btn.dataset.groupMode;
+      if (groupModeAttr) {
+        state.setGroupMode(groupModeAttr as GroupMode);
+        state.resetPage();
+        renderApp();
+        return;
+      }
+
+      // Toggle group collapsed (collapsible headers)
+      const toggleGroupAttr = btn.dataset.toggleGroup;
+      if (toggleGroupAttr) {
+        state.toggleGroupCollapsed(toggleGroupAttr);
+        renderApp();
         return;
       }
 

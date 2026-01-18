@@ -2,27 +2,26 @@
  * Tabula Desktop - Tabs View
  */
 
-import type { TabRecord, Settings, SortField, SortOrder, TabCategory } from "../types";
-import { sortTabs, getStats, groupTabsByCategory, CATEGORIES, getCategoryInfo } from "../utils";
+import type { TabRecord, Settings, SortField, SortOrder, TabCategory, GroupMode } from "../types";
+import { sortTabs, getStats, groupTabsByCategory, groupTabsByDomain, CATEGORIES, getCategoryInfo } from "../utils";
 import { renderTabCard } from "../components/TabCard";
-import { TABS_PER_PAGE } from "../state";
+import { TABS_PER_PAGE, isGroupCollapsed } from "../state";
 
 export function renderTabsView(
   tabs: TabRecord[],
   settings: Settings,
   sortField: SortField,
   sortOrder: SortOrder,
-  currentPage: number
+  currentPage: number,
+  groupMode: GroupMode = "none"
 ): string {
   const openTabs = tabs.filter((t) => !t.closed_at);
   const stats = getStats(tabs);
   const batchSize = settings.analyze_batch_size || 30;
 
   // Check if we're in grouped mode
-  const isGroupedMode = sortField === "category";
-
-  if (isGroupedMode) {
-    return renderGroupedMode(openTabs, stats, batchSize, sortField);
+  if (groupMode !== "none") {
+    return renderGroupedMode(openTabs, stats, batchSize, sortField, sortOrder, groupMode);
   }
 
   // Normal sorted view with pagination
@@ -40,6 +39,8 @@ export function renderTabsView(
     <div class="view-wrapper">
       ${renderHeader(stats, batchSize)}
       <div class="toolbar">
+        ${renderGroupControls(groupMode)}
+        <div class="toolbar-divider"></div>
         ${renderSortControls(sortField, sortOrder)}
         ${totalPages > 1 ? renderPagination(currentPage, totalPages, hasPrev, hasNext) : ""}
       </div>
@@ -58,49 +59,89 @@ function renderGroupedMode(
   openTabs: TabRecord[],
   stats: ReturnType<typeof getStats>,
   batchSize: number,
-  sortField: SortField
+  sortField: SortField,
+  sortOrder: SortOrder,
+  groupMode: GroupMode
 ): string {
-  const grouped = groupTabsByCategory(openTabs);
-  
-  // Filter out empty categories
-  const nonEmptyCategories = CATEGORIES.filter(
-    (cat) => (grouped.get(cat.id)?.length || 0) > 0
-  );
+  let groupsHtml = "";
+
+  if (groupMode === "category") {
+    const grouped = groupTabsByCategory(openTabs);
+    // Filter out empty categories
+    const nonEmptyCategories = CATEGORIES.filter(
+      (cat) => (grouped.get(cat.id)?.length || 0) > 0
+    );
+    groupsHtml = nonEmptyCategories.length > 0
+      ? nonEmptyCategories.map((cat) => renderCategoryGroup(cat.id, grouped.get(cat.id) || [], sortField, sortOrder)).join("")
+      : renderEmptyState();
+  } else if (groupMode === "domain") {
+    const grouped = groupTabsByDomain(openTabs);
+    groupsHtml = grouped.size > 0
+      ? [...grouped.entries()].map(([domain, tabs]) => renderDomainGroup(domain, tabs, sortField, sortOrder)).join("")
+      : renderEmptyState();
+  }
 
   return `
     <div class="view-wrapper">
       ${renderHeader(stats, batchSize)}
       <div class="toolbar">
-        ${renderSortControls(sortField, "desc")}
+        ${renderGroupControls(groupMode)}
+        <div class="toolbar-divider"></div>
+        ${renderSortControls(sortField, sortOrder)}
       </div>
       <div id="statusMessage" class="status-message"></div>
       <div class="scroll-area">
         <div class="grouped-container">
-          ${nonEmptyCategories.length > 0
-            ? nonEmptyCategories.map((cat) => renderCategoryGroup(cat.id, grouped.get(cat.id) || [])).join("")
-            : renderEmptyState()
-          }
+          ${groupsHtml}
         </div>
       </div>
     </div>
   `;
 }
 
-function renderCategoryGroup(category: TabCategory, tabs: TabRecord[]): string {
+function renderCategoryGroup(category: TabCategory, tabs: TabRecord[], sortField: SortField, sortOrder: SortOrder): string {
   const info = getCategoryInfo(category);
+  const isCollapsed = isGroupCollapsed(`category-${category}`);
+  const sortedTabs = sortTabs(tabs, sortField, sortOrder);
 
   return `
-    <div class="category-group" data-category="${category}">
-      <div class="category-header" style="--category-color: ${info.color}">
+    <div class="category-group ${isCollapsed ? "collapsed" : ""}" data-category="${category}" data-group-id="category-${category}">
+      <div class="category-header collapsible" style="--category-color: ${info.color}" data-toggle-group="category-${category}">
         <div class="category-title">
+          <span class="collapse-icon">${isCollapsed ? "▶" : "▼"}</span>
           <span class="category-icon">${info.icon}</span>
           <span class="category-name">${info.label}</span>
           <span class="category-count">${tabs.length}</span>
         </div>
       </div>
-      <div class="category-tabs">
+      <div class="category-tabs" style="${isCollapsed ? "display: none;" : ""}">
         <div class="tabs-grid">
-          ${tabs.map((tab) => renderTabCard(tab)).join("")}
+          ${sortedTabs.map((tab) => renderTabCard(tab)).join("")}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderDomainGroup(domain: string, tabs: TabRecord[], sortField: SortField, sortOrder: SortOrder): string {
+  const isCollapsed = isGroupCollapsed(`domain-${domain}`);
+  const sortedTabs = sortTabs(tabs, sortField, sortOrder);
+  // Get favicon from first tab
+  const favicon = tabs[0]?.fav_icon_url;
+
+  return `
+    <div class="domain-group ${isCollapsed ? "collapsed" : ""}" data-domain="${domain}" data-group-id="domain-${domain}">
+      <div class="domain-header collapsible" data-toggle-group="domain-${domain}">
+        <div class="domain-title">
+          <span class="collapse-icon">${isCollapsed ? "▶" : "▼"}</span>
+          ${favicon ? `<img class="domain-favicon" src="${favicon}" onerror="this.style.display='none'" />` : '<span class="domain-icon">🌐</span>'}
+          <span class="domain-name">${domain}</span>
+          <span class="domain-count">${tabs.length}</span>
+        </div>
+      </div>
+      <div class="domain-tabs" style="${isCollapsed ? "display: none;" : ""}">
+        <div class="tabs-grid">
+          ${sortedTabs.map((tab) => renderTabCard(tab)).join("")}
         </div>
       </div>
     </div>
@@ -145,26 +186,42 @@ function renderHeader(stats: ReturnType<typeof getStats>, batchSize: number): st
   `;
 }
 
+function renderGroupControls(groupMode: GroupMode): string {
+  return `
+    <div class="group-controls">
+      <label>Group by:</label>
+      <div class="group-buttons">
+        <button class="btn-group ${groupMode === "none" ? "active" : ""}" data-group-mode="none">
+          None
+        </button>
+        <button class="btn-group ${groupMode === "category" ? "active" : ""}" data-group-mode="category">
+          📁 Category
+        </button>
+        <button class="btn-group ${groupMode === "domain" ? "active" : ""}" data-group-mode="domain">
+          🌐 Domain
+        </button>
+      </div>
+    </div>
+  `;
+}
+
 function renderSortControls(sortField: SortField, sortOrder: string): string {
   return `
     <div class="sort-controls">
       <label>Sort by:</label>
       <select id="sortField">
-        <option value="last_active" ${sortField === "last_active" ? "selected" : ""}>Last Active (离开时间)</option>
-        <option value="created" ${sortField === "created" ? "selected" : ""}>Tab Age (创建时间)</option>
-        <option value="title" ${sortField === "title" ? "selected" : ""}>Title (标题)</option>
-        <option value="active_time" ${sortField === "active_time" ? "selected" : ""}>Active Time (活跃时长)</option>
-        <option value="has_screenshot" ${sortField === "has_screenshot" ? "selected" : ""}>Has Screenshot (有截图)</option>
-        <option value="has_analysis" ${sortField === "has_analysis" ? "selected" : ""}>Has Analysis (已分析)</option>
-        <option value="category" ${sortField === "category" ? "selected" : ""}>Category (按类别分组)</option>
+        <option value="last_active" ${sortField === "last_active" ? "selected" : ""}>Last Active</option>
+        <option value="created" ${sortField === "created" ? "selected" : ""}>Tab Age</option>
+        <option value="title" ${sortField === "title" ? "selected" : ""}>Title</option>
+        <option value="active_time" ${sortField === "active_time" ? "selected" : ""}>Active Time</option>
+        <option value="has_screenshot" ${sortField === "has_screenshot" ? "selected" : ""}>Has Screenshot</option>
+        <option value="has_analysis" ${sortField === "has_analysis" ? "selected" : ""}>Has Analysis</option>
       </select>
-      ${sortField !== "category" ? `
-        <button id="toggleOrder" class="btn-order ${sortOrder}">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M12 5v14M5 12l7 7 7-7"/>
-          </svg>
-        </button>
-      ` : ""}
+      <button id="toggleOrder" class="btn-order ${sortOrder}">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 5v14M5 12l7 7 7-7"/>
+        </svg>
+      </button>
     </div>
   `;
 }

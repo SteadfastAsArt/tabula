@@ -264,3 +264,38 @@ export function groupTabsByCategory(tabs: TabRecord[]): Map<TabCategory, TabReco
 
   return grouped;
 }
+
+/**
+ * Extract domain from URL
+ */
+export function extractDomain(url?: string): string {
+  if (!url) return "unknown";
+  try {
+    const urlObj = new URL(url);
+    // Remove 'www.' prefix for cleaner grouping
+    return urlObj.hostname.replace(/^www\./, "");
+  } catch {
+    return "unknown";
+  }
+}
+
+/**
+ * Group tabs by domain
+ */
+export function groupTabsByDomain(tabs: TabRecord[]): Map<string, TabRecord[]> {
+  const grouped = new Map<string, TabRecord[]>();
+
+  tabs.forEach((tab) => {
+    const domain = extractDomain(tab.url);
+    const list = grouped.get(domain) || [];
+    list.push(tab);
+    grouped.set(domain, list);
+  });
+
+  // Sort domains by tab count (descending)
+  const sorted = new Map(
+    [...grouped.entries()].sort((a, b) => b[1].length - a[1].length)
+  );
+
+  return sorted;
+}

@@ -121,16 +121,15 @@ fn format_tab_for_prompt(tab: &TabRecord) -> String {
         format!("totalActiveMs: {}", tab.total_active_ms),
     ];
 
-    if let Some(snapshot) = &tab.snapshot {
-        if let Some(text) = &snapshot.text {
-            // Limit text length
-            let truncated = if text.len() > 2000 {
-                format!("{}...", &text[..2000])
-            } else {
-                text.clone()
-            };
-            lines.push(format!("content: {}", truncated));
-        }
+    // Use description from TabRecord (extracted from page meta/content)
+    if let Some(desc) = &tab.description {
+        // Limit description length for prompt
+        let truncated = if desc.len() > 3000 {
+            format!("{}...", &desc[..3000])
+        } else {
+            desc.clone()
+        };
+        lines.push(format!("content: {}", truncated));
     }
 
     lines.join("\n")
@@ -267,28 +266,48 @@ pub async fn generate_daily_report(tabs: &[TabRecord], settings: &Settings) -> R
     let tab_list: Vec<String> = tabs
         .iter()
         .map(|tab| {
-            format!(
-                "- {} ({}) activeMs={}",
-                tab.title.as_deref().unwrap_or("Untitled"),
-                tab.url.as_deref().unwrap_or("no url"),
-                tab.total_active_ms
-            )
+            let mut parts = vec![
+                format!("Title: {}", tab.title.as_deref().unwrap_or("Untitled")),
+                format!("URL: {}", tab.url.as_deref().unwrap_or("no url")),
+                format!("Active time: {}ms", tab.total_active_ms),
+            ];
+            
+            // Add description if available (truncate to 500 chars for report)
+            if let Some(desc) = &tab.description {
+                let truncated = if desc.len() > 500 {
+                    format!("{}...", &desc[..500])
+                } else {
+                    desc.clone()
+                };
+                parts.push(format!("Content: {}", truncated));
+            }
+            
+            format!("---\n{}", parts.join("\n"))
         })
         .collect();
 
     let today = chrono::Local::now().format("%Y-%m-%d").to_string();
+    
+    // Build user context if available
+    let user_context_str = settings
+        .user_context
+        .as_ref()
+        .filter(|s| !s.is_empty())
+        .map(|ctx| format!("\n\nUser's context and work preferences:\n{}", ctx))
+        .unwrap_or_default();
 
     let messages = vec![
         ChatMessage {
             role: "system".to_string(),
-            content: serde_json::json!("You summarize browsing activity as a daily report with key themes, tasks, and next actions. Be concise and actionable."),
+            content: serde_json::json!("You summarize browsing activity as a daily report with key themes, tasks, and next actions. Be concise and actionable. Use markdown formatting."),
         },
         ChatMessage {
             role: "user".to_string(),
             content: serde_json::json!(format!(
-                "Generate a concise daily report for {} based on opened tabs.\nInclude: main themes, completed work, open questions, and suggested follow-ups.\n\nTabs:\n{}",
+                "Generate a concise daily report for {} based on the user's browsing activity.\n\nInclude:\n- Main themes and topics\n- Key activities and progress\n- Open questions or unfinished tasks\n- Suggested follow-ups for tomorrow{}\n\nTabs visited today:\n{}",
                 today,
-                tab_list.join("\n")
+                user_context_str,
+                tab_list.join("\n\n")
             )),
         },
     ];

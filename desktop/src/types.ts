@@ -3,7 +3,6 @@
  */
 
 export interface TabSnapshot {
-  text?: string;
   screenshot_path?: string;
   captured_at: number;
 }
@@ -26,6 +25,8 @@ export interface TabRecord {
   total_active_ms: number;
   is_active: boolean;
   closed_at?: number;
+  /** Rich description extracted from page meta/content (max 8000 words) */
+  description?: string;
   snapshot?: TabSnapshot;
   suggestion?: TabSuggestion;
 }
@@ -50,10 +51,11 @@ export type SortField =
   | "title"
   | "active_time"
   | "has_screenshot"
-  | "has_analysis"
-  | "category";
+  | "has_analysis";
 
 export type SortOrder = "asc" | "desc";
+
+export type GroupMode = "none" | "category" | "domain";
 
 export type ViewType = "tabs" | "stats" | "history" | "report" | "settings";
 

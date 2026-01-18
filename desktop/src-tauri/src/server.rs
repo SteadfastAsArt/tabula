@@ -58,12 +58,13 @@ pub struct TabData {
     // Track when last screenshot was taken
     #[serde(rename = "lastScreenshotAt")]
     pub last_screenshot_at: Option<i64>,
+    // Rich description extracted from page meta/content
+    pub description: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct CapturePayload {
     pub tab: TabData,
-    pub text: Option<String>,
     #[serde(rename = "screenshotBase64")]
     pub screenshot_base64: Option<String>,
     #[serde(rename = "capturedAt")]
@@ -205,13 +206,13 @@ async fn handle_capture(
         total_active_ms: payload.tab.total_active_ms,
         is_active: payload.tab.is_active,
         closed_at: None,
+        description: payload.tab.description.clone(),
         snapshot: None,
         suggestion: None,
     });
 
     // Update snapshot
     tab.snapshot = Some(TabSnapshot {
-        text: payload.text,
         screenshot_path,
         captured_at: payload.captured_at,
     });
@@ -222,6 +223,10 @@ async fn handle_capture(
     tab.last_active_at = payload.tab.last_active_at;
     tab.total_active_ms = payload.tab.total_active_ms;
     tab.is_active = payload.tab.is_active;
+    // Update description if provided
+    if payload.tab.description.is_some() {
+        tab.description = payload.tab.description;
+    }
 
     // Save to disk
     if let Err(e) = storage.save_tabs() {
@@ -246,6 +251,7 @@ async fn handle_event(
             let prev_active_ms = existing.map(|t| t.total_active_ms).unwrap_or(0);
             let prev_snapshot = existing.and_then(|t| t.snapshot.clone());
             let prev_suggestion = existing.and_then(|t| t.suggestion.clone());
+            let prev_description = existing.and_then(|t| t.description.clone());
             
             let tab = storage.tabs.entry(event.tab.id).or_insert_with(|| TabRecord {
                 id: event.tab.id,
@@ -258,6 +264,7 @@ async fn handle_event(
                 total_active_ms: 0,
                 is_active: event.tab.is_active,
                 closed_at: None,
+                description: event.tab.description.clone(),
                 snapshot: None,
                 suggestion: None,
             });
@@ -268,6 +275,13 @@ async fn handle_event(
             tab.fav_icon_url = event.tab.fav_icon_url;
             tab.last_active_at = event.tab.last_active_at;
             tab.is_active = event.tab.is_active;
+            
+            // Update description if provided, otherwise preserve existing
+            if event.tab.description.is_some() {
+                tab.description = event.tab.description;
+            } else if tab.description.is_none() {
+                tab.description = prev_description;
+            }
             
             // Accumulate active time - take max of existing and incoming
             // Extension sends accumulated time, so take the larger value

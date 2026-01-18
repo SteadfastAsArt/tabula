@@ -122,13 +122,13 @@ export async function captureAndSendTab(
     }
   }
 
-  // Get text content
-  let text: string | undefined;
+  // Extract description from content script
+  let description: string | undefined;
   try {
     const response = await chrome.tabs.sendMessage(tabId, {
       type: "extractContent",
     });
-    text = response?.text?.slice(0, 8000);
+    description = response?.description;
   } catch {
     // Content script not available
   }
@@ -140,10 +140,10 @@ export async function captureAndSendTab(
   const payload: CapturePayload = {
     tab: {
       ...tab,
+      description: description ?? tab.description,
       totalActiveMs: getAccumulatedActiveMs(tab, state),
       lastActiveAt: now(),
     },
-    text,
     screenshotBase64: screenshotBase64 ?? undefined,
     capturedAt: now(),
   };

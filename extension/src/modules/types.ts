@@ -15,6 +15,8 @@ export interface TabData {
   closedAt?: number;
   discarded?: boolean;
   lastScreenshotAt?: number;
+  /** Rich description extracted from page meta/content (max 8000 words) */
+  description?: string;
 }
 
 export interface StoredState {
@@ -26,7 +28,6 @@ export interface StoredState {
 
 export interface CapturePayload {
   tab: TabData;
-  text?: string;
   screenshotBase64?: string;
   capturedAt: number;
 }
