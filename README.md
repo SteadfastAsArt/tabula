@@ -34,6 +34,15 @@
 
 </div>
 
+<!-- Hero Screenshot -->
+<p align="center">
+  <img src="docs/screenshots/hero.png" alt="Tabula Main Interface" width="800">
+  <br>
+  <em>AI-powered tab management with smart categorization</em>
+</p>
+
+<br>
+
 ## 🌟 What is Tabula?
 
 **Tabula** uses AI to understand your browsing context and intelligently manage your tabs. It captures screenshots, extracts page content, tracks your activity, and suggests which tabs to keep or close — all while keeping your data completely private on your machine.
@@ -192,6 +201,20 @@ The **Tabs** view shows all your open tabs with:
 - AI suggestion (Keep/Close/Unsure)
 - Category badge
 - Active time tracking
+
+<details>
+<summary>📸 <b>Screenshots</b></summary>
+<br>
+
+| Tabs View | Category View |
+|:---------:|:-------------:|
+| <img src="docs/screenshots/tabs-view.png" width="400"> | <img src="docs/screenshots/categories.png" width="400"> |
+
+| Statistics | Daily Report |
+|:----------:|:------------:|
+| <img src="docs/screenshots/stats.png" width="400"> | <img src="docs/screenshots/report.png" width="400"> |
+
+</details>
 
 ### Actions
 
