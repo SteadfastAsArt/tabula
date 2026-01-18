@@ -26,6 +26,7 @@ export let sortOrder: SortOrder = "desc";
 export let currentPage: number = 0;
 export let groupMode: GroupMode = "none";
 export let collapsedGroups: Set<string> = new Set();
+export let theme: "dark" | "light" = "dark";
 
 // State setters
 export function setTabs(newTabs: TabRecord[]): void {
@@ -97,4 +98,12 @@ export function toggleGroupCollapsed(groupId: string): void {
 
 export function isGroupCollapsed(groupId: string): boolean {
   return collapsedGroups.has(groupId);
+}
+
+export function setTheme(newTheme: "dark" | "light"): void {
+  theme = newTheme;
+}
+
+export function toggleTheme(): void {
+  theme = theme === "dark" ? "light" : "dark";
 }

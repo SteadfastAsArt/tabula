@@ -66,6 +66,17 @@ function showStatus(message: string, isError = false): void {
   }, 4000);
 }
 
+function applyTheme(theme: "dark" | "light"): void {
+  document.documentElement.setAttribute("data-theme", theme);
+}
+
+function loadTheme(): void {
+  const savedTheme = localStorage.getItem("tabula-theme") as "dark" | "light" | null;
+  const theme = savedTheme || "dark";
+  state.setTheme(theme);
+  applyTheme(theme);
+}
+
 // ─────────────────────────────────────────────────────────────
 // Event Handling - Using Event Delegation to avoid accumulation
 // ─────────────────────────────────────────────────────────────
@@ -345,6 +356,16 @@ function attachEventListeners(): void {
         }
         return;
       }
+
+      // Theme toggle buttons
+      const themeValue = btn.dataset.themeValue as "dark" | "light" | undefined;
+      if (themeValue) {
+        state.setTheme(themeValue);
+        applyTheme(themeValue);
+        localStorage.setItem("tabula-theme", themeValue);
+        renderApp();
+        return;
+      }
     },
     { signal }
   );
@@ -411,6 +432,9 @@ async function loadReport(): Promise<void> {
 // ─────────────────────────────────────────────────────────────
 
 async function init(): Promise<void> {
+  // Load theme from localStorage first (before any rendering)
+  loadTheme();
+
   await Promise.all([loadTabs(), loadClosedTabs(), loadSettings(), loadReport()]);
 
   await listen("tab-captured", () => {
