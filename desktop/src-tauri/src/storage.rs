@@ -18,6 +18,7 @@ pub struct TabSuggestion {
     pub decision: String,
     pub reason: String,
     pub category: Option<String>,
+    pub digest: Option<String>,  // AI-generated brief summary of the tab content
     pub scored_at: i64,
 }
 

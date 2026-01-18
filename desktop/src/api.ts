@@ -17,6 +17,10 @@ export async function getSettings(): Promise<Settings> {
   return invoke("get_settings");
 }
 
+export async function getReport(): Promise<DailyReport | null> {
+  return invoke("get_report");
+}
+
 export async function saveSettings(settings: Settings): Promise<void> {
   return invoke("save_settings", { settings });
 }

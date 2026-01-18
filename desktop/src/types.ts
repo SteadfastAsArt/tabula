@@ -11,6 +11,7 @@ export interface TabSuggestion {
   decision: string;
   reason: string;
   category?: string;
+  digest?: string;  // AI-generated brief summary of the tab content
   scored_at: number;
 }
 

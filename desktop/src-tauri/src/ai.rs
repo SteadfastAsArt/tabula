@@ -43,6 +43,7 @@ struct SuggestionItem {
     category: Option<String>,
     decision: String,
     reason: String,
+    digest: Option<String>,
 }
 
 fn get_api_key(settings: &Settings) -> Result<String, String> {
@@ -78,12 +79,66 @@ async fn call_openai(
     let base_url = get_base_url(settings);
     let model = get_model(settings);
 
-    let client = Client::new();
+    // Log request details
+    let request_body = serde_json::to_string(&messages).unwrap_or_default();
+    let request_size = request_body.len();
+    let image_count = request_body.matches("image_url").count();
+    
+    // Count words (split by whitespace)
+    let word_count: usize = messages.iter().map(|msg| {
+        let content_str = serde_json::to_string(&msg.content).unwrap_or_default();
+        // Remove base64 image data before counting words
+        let without_base64 = content_str.split("base64,").next().unwrap_or(&content_str);
+        without_base64.split_whitespace().count()
+    }).sum();
+    
+    println!("\n[AI] ========== Request Start ==========");
+    println!("[AI] Model: {}", model);
+    println!("[AI] Base URL: {}", base_url);
+    println!("[AI] Temperature: {}", temperature);
+    println!("[AI] Messages count: {}", messages.len());
+    println!("[AI] Request body size: {} bytes ({:.2} KB)", request_size, request_size as f64 / 1024.0);
+    println!("[AI] Word count (excluding base64): ~{} words", word_count);
+    println!("[AI] Image count: {}", image_count);
+    
+    // Print full message content
+    for (i, msg) in messages.iter().enumerate() {
+        let content_str = serde_json::to_string_pretty(&msg.content).unwrap_or_default();
+        // For content with images, truncate base64 data for readability
+        let display_content = if content_str.contains("base64,") {
+            let mut result = String::new();
+            for part in content_str.split("base64,") {
+                if result.is_empty() {
+                    result.push_str(part);
+                } else {
+                    // Find where the base64 data ends (at the next quote)
+                    if let Some(end_idx) = part.find('"') {
+                        result.push_str("base64,[IMAGE_DATA_TRUNCATED]");
+                        result.push_str(&part[end_idx..]);
+                    } else {
+                        result.push_str("base64,[IMAGE_DATA_TRUNCATED]");
+                    }
+                }
+            }
+            result
+        } else {
+            content_str
+        };
+        println!("[AI] Message[{}] role={}:\n{}", i, msg.role, display_content);
+    }
+
+    let client = Client::builder()
+        .timeout(std::time::Duration::from_secs(120))  // 2 minutes timeout
+        .build()
+        .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
     let request = ChatRequest {
-        model,
+        model: model.clone(),
         messages,
         temperature,
     };
+
+    let start_time = std::time::Instant::now();
+    println!("[AI] Sending request...");
 
     let response = client
         .post(format!("{}/chat/completions", base_url))
@@ -92,23 +147,40 @@ async fn call_openai(
         .json(&request)
         .send()
         .await
-        .map_err(|e| format!("Request failed: {}", e))?;
+        .map_err(|e| {
+            println!("[AI] Request failed: {}", e);
+            format!("Request failed: {}", e)
+        })?;
 
-    if !response.status().is_success() {
+    let elapsed = start_time.elapsed();
+    let status = response.status();
+    println!("[AI] Response status: {} (took {:.2}s)", status, elapsed.as_secs_f64());
+
+    if !status.is_success() {
         let error_text = response.text().await.unwrap_or_default();
+        println!("[AI] API error: {}", error_text);
         return Err(format!("API error: {}", error_text));
     }
 
     let chat_response: ChatResponse = response
         .json()
         .await
-        .map_err(|e| format!("Failed to parse response: {}", e))?;
+        .map_err(|e| {
+            println!("[AI] Failed to parse response: {}", e);
+            format!("Failed to parse response: {}", e)
+        })?;
 
-    chat_response
+    let result = chat_response
         .choices
         .first()
         .map(|c| c.message.content.clone())
-        .ok_or_else(|| "No response from API".to_string())
+        .ok_or_else(|| "No response from API".to_string())?;
+
+    let response_word_count = result.split_whitespace().count();
+    println!("[AI] Response: {} words, {} bytes", response_word_count, result.len());
+    println!("[AI] ========== Request End (total {:.2}s) ==========\n", start_time.elapsed().as_secs_f64());
+
+    Ok(result)
 }
 
 fn format_tab_for_prompt(tab: &TabRecord) -> String {
@@ -123,12 +195,8 @@ fn format_tab_for_prompt(tab: &TabRecord) -> String {
 
     // Use description from TabRecord (extracted from page meta/content)
     if let Some(desc) = &tab.description {
-        // Limit description length for prompt
-        let truncated = if desc.len() > 3000 {
-            format!("{}...", &desc[..3000])
-        } else {
-            desc.clone()
-        };
+        // Limit description length for prompt (use char count for UTF-8 safety)
+        let truncated = truncate_str(desc, 3000);
         lines.push(format!("content: {}", truncated));
     }
 
@@ -186,6 +254,7 @@ Return JSON array only. Each item must have:
 - "category": one of [work, research, communication, entertainment, shopping, reference, utility]
 - "decision": "keep" | "close" | "unsure"
 - "reason": brief explanation
+- "digest": a concise 1-2 sentence summary of the tab's content/purpose (in the same language as the page content)
 
 Base decisions on:
 1. Tab's relevance to user's current work/goals
@@ -251,6 +320,7 @@ Base decisions on:
                     decision: s.decision,
                     reason: s.reason,
                     category: s.category,
+                    digest: s.digest,
                     scored_at: now,
                 },
             )
@@ -258,31 +328,93 @@ Base decisions on:
         .collect())
 }
 
+fn extract_domain(url: &str) -> String {
+    url.split("://")
+        .nth(1)
+        .and_then(|s| s.split('/').next())
+        .map(|s| s.to_string())
+        .unwrap_or_else(|| "unknown".to_string())
+}
+
+/// Safely truncate a string to approximately max_chars characters
+/// Handles UTF-8 character boundaries correctly
+fn truncate_str(s: &str, max_chars: usize) -> String {
+    if s.chars().count() <= max_chars {
+        s.to_string()
+    } else {
+        let truncated: String = s.chars().take(max_chars).collect();
+        format!("{}...", truncated)
+    }
+}
+
 pub async fn generate_daily_report(tabs: &[TabRecord], settings: &Settings) -> Result<String, String> {
+    println!("\n[AI Report] ========== Generate Daily Report ==========");
+    
     if tabs.is_empty() {
+        println!("[AI Report] No tabs to report on.");
         return Ok("No tabs to report on.".to_string());
     }
 
-    let tab_list: Vec<String> = tabs
+    // Stats for logging
+    let tabs_with_suggestion = tabs.iter().filter(|t| t.suggestion.is_some()).count();
+    let tabs_with_digest = tabs.iter().filter(|t| t.suggestion.as_ref().and_then(|s| s.digest.as_ref()).is_some()).count();
+    let tabs_with_description = tabs.iter().filter(|t| t.description.is_some()).count();
+    
+    println!("[AI Report] Total tabs: {}", tabs.len());
+    println!("[AI Report] Tabs with suggestion: {}", tabs_with_suggestion);
+    println!("[AI Report] Tabs with digest: {}", tabs_with_digest);
+    println!("[AI Report] Tabs with description: {}", tabs_with_description);
+
+    // Group tabs by domain
+    let mut domain_groups: std::collections::HashMap<String, Vec<&TabRecord>> = std::collections::HashMap::new();
+    for tab in tabs {
+        let domain = tab.url.as_deref().map(extract_domain).unwrap_or_else(|| "unknown".to_string());
+        domain_groups.entry(domain).or_default().push(tab);
+    }
+    
+    println!("[AI Report] Domains: {}", domain_groups.len());
+    for (domain, domain_tabs) in &domain_groups {
+        println!("[AI Report]   - {}: {} tabs", domain, domain_tabs.len());
+    }
+
+    // Format grouped tabs
+    let grouped_list: Vec<String> = domain_groups
         .iter()
-        .map(|tab| {
-            let mut parts = vec![
-                format!("Title: {}", tab.title.as_deref().unwrap_or("Untitled")),
-                format!("URL: {}", tab.url.as_deref().unwrap_or("no url")),
-                format!("Active time: {}ms", tab.total_active_ms),
-            ];
+        .map(|(domain, domain_tabs)| {
+            let tabs_info: Vec<String> = domain_tabs
+                .iter()
+                .map(|tab| {
+                    let title = tab.title.as_deref().unwrap_or("Untitled");
+                    let active_time = tab.total_active_ms;
+                    
+                    // Use category + digest from suggestion, fallback to description
+                    let content = if let Some(suggestion) = &tab.suggestion {
+                        let category = suggestion.category.as_deref().unwrap_or("uncategorized");
+                        let summary = suggestion.digest.as_deref()
+                            .or(tab.description.as_deref())
+                            .map(|d| truncate_str(d, 300))
+                            .unwrap_or_default();
+                        if summary.is_empty() {
+                            format!("[{}]", category)
+                        } else {
+                            format!("[{}] {}", category, summary)
+                        }
+                    } else {
+                        // No suggestion, use description
+                        tab.description.as_deref()
+                            .map(|d| truncate_str(d, 300))
+                            .unwrap_or_default()
+                    };
+                    
+                    if content.is_empty() {
+                        format!("  - {} ({}ms)", title, active_time)
+                    } else {
+                        format!("  - {} ({}ms)\n    {}", title, active_time, content)
+                    }
+                })
+                .collect();
             
-            // Add description if available (truncate to 500 chars for report)
-            if let Some(desc) = &tab.description {
-                let truncated = if desc.len() > 500 {
-                    format!("{}...", &desc[..500])
-                } else {
-                    desc.clone()
-                };
-                parts.push(format!("Content: {}", truncated));
-            }
-            
-            format!("---\n{}", parts.join("\n"))
+            format!("## {}\n{}", domain, tabs_info.join("\n"))
         })
         .collect();
 
@@ -296,21 +428,48 @@ pub async fn generate_daily_report(tabs: &[TabRecord], settings: &Settings) -> R
         .map(|ctx| format!("\n\nUser's context and work preferences:\n{}", ctx))
         .unwrap_or_default();
 
+    // Build prompt content
+    let prompt_content = format!(
+        "Generate a concise daily report for {} based on the user's browsing activity.\n\nInclude:\n- Main themes and topics\n- Key activities and progress\n- Open questions or unfinished tasks\n- Suggested follow-ups for tomorrow{}\n\nBrowsing activity grouped by domain:\n\n{}",
+        today,
+        user_context_str,
+        grouped_list.join("\n\n")
+    );
+    
+    let system_content = "You summarize browsing activity as a daily report with key themes, tasks, and next actions. Be concise and actionable. Use markdown formatting. The input is grouped by domain, each tab has a title, active time, and optionally a category tag with content summary.";
+    
+    // Log complete messages
+    let prompt_word_count = prompt_content.split_whitespace().count();
+    println!("[AI Report] -------- Messages --------");
+    println!("[AI Report] System message ({} words):\n{}", system_content.split_whitespace().count(), system_content);
+    println!("[AI Report] --------");
+    println!("[AI Report] User message ({} words):\n{}", prompt_word_count, prompt_content);
+    println!("[AI Report] -------- End Messages --------");
+
     let messages = vec![
         ChatMessage {
             role: "system".to_string(),
-            content: serde_json::json!("You summarize browsing activity as a daily report with key themes, tasks, and next actions. Be concise and actionable. Use markdown formatting."),
+            content: serde_json::json!(system_content),
         },
         ChatMessage {
             role: "user".to_string(),
-            content: serde_json::json!(format!(
-                "Generate a concise daily report for {} based on the user's browsing activity.\n\nInclude:\n- Main themes and topics\n- Key activities and progress\n- Open questions or unfinished tasks\n- Suggested follow-ups for tomorrow{}\n\nTabs visited today:\n{}",
-                today,
-                user_context_str,
-                tab_list.join("\n\n")
-            )),
+            content: serde_json::json!(prompt_content),
         },
     ];
 
-    call_openai(settings, messages, 0.3).await
+    println!("[AI Report] Calling OpenAI API...");
+    let result = call_openai(settings, messages, 0.3).await;
+    
+    match &result {
+        Ok(content) => {
+            println!("[AI Report] Report generated successfully ({} words)", content.split_whitespace().count());
+            println!("[AI Report] Response:\n{}", content);
+        }
+        Err(e) => {
+            println!("[AI Report] Failed to generate report: {}", e);
+        }
+    }
+    println!("[AI Report] ========== End Daily Report ==========\n");
+    
+    result
 }

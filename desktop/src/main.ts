@@ -397,12 +397,21 @@ async function loadSettings(): Promise<void> {
   }
 }
 
+async function loadReport(): Promise<void> {
+  try {
+    const report = await api.getReport();
+    state.setReport(report);
+  } catch (err) {
+    console.error("Failed to load report:", err);
+  }
+}
+
 // ─────────────────────────────────────────────────────────────
 // Initialization
 // ─────────────────────────────────────────────────────────────
 
 async function init(): Promise<void> {
-  await Promise.all([loadTabs(), loadClosedTabs(), loadSettings()]);
+  await Promise.all([loadTabs(), loadClosedTabs(), loadSettings(), loadReport()]);
 
   await listen("tab-captured", () => {
     loadTabs();

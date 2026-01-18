@@ -66,6 +66,8 @@ export interface TabSuggestion {
   decision: "keep" | "close" | "unsure";
   reason: string;
   category?: TabCategory;
+  /** AI-generated brief summary of the tab content */
+  digest?: string;
   scoredAt: number;
 }
 

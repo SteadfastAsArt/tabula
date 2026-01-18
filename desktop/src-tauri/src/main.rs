@@ -52,6 +52,7 @@ fn main() {
             get_tabs,
             get_closed_tabs,
             get_settings,
+            get_report,
             save_settings,
             analyze_tabs,
             analyze_batch,
@@ -85,6 +86,12 @@ async fn get_closed_tabs(state: tauri::State<'_, AppState>) -> Result<Vec<storag
 async fn get_settings(state: tauri::State<'_, AppState>) -> Result<storage::Settings, String> {
     let storage = state.read().await;
     Ok(storage.settings.clone())
+}
+
+#[tauri::command]
+async fn get_report(state: tauri::State<'_, AppState>) -> Result<Option<storage::DailyReport>, String> {
+    let storage = state.read().await;
+    Ok(storage.report.clone())
 }
 
 #[tauri::command]
@@ -186,15 +193,17 @@ async fn close_tab(state: tauri::State<'_, AppState>, tab_id: i64) -> Result<(),
 #[tauri::command]
 async fn mark_keep(state: tauri::State<'_, AppState>, tab_id: i64) -> Result<(), String> {
     let mut storage = state.write().await;
-    // Preserve existing category if any
-    let existing_category = storage.tabs.get(&tab_id)
-        .and_then(|t| t.suggestion.as_ref())
-        .and_then(|s| s.category.clone());
+    // Preserve existing category and digest if any
+    let existing = storage.tabs.get(&tab_id)
+        .and_then(|t| t.suggestion.as_ref());
+    let existing_category = existing.and_then(|s| s.category.clone());
+    let existing_digest = existing.and_then(|s| s.digest.clone());
     
     storage.update_suggestion(tab_id, storage::TabSuggestion {
         decision: "keep".to_string(),
         reason: "Marked as keep by user".to_string(),
         category: existing_category,
+        digest: existing_digest,
         scored_at: chrono::Utc::now().timestamp_millis(),
     });
     storage.save_tabs().map_err(|e| e.to_string())
