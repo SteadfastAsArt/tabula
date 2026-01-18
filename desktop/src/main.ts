@@ -88,6 +88,18 @@ function attachEventListeners(): void {
     "click",
     async (e) => {
       const target = e.target as HTMLElement;
+
+      // Check for collapsible group header first (before button check)
+      const collapsibleHeader = target.closest("[data-toggle-group]") as HTMLElement | null;
+      if (collapsibleHeader) {
+        const toggleGroupAttr = collapsibleHeader.dataset.toggleGroup;
+        if (toggleGroupAttr) {
+          state.toggleGroupCollapsed(toggleGroupAttr);
+          renderApp();
+          return;
+        }
+      }
+
       const btn = target.closest("button, [data-action]") as HTMLElement | null;
       if (!btn) return;
 
@@ -107,14 +119,6 @@ function attachEventListeners(): void {
       if (groupModeAttr) {
         state.setGroupMode(groupModeAttr as GroupMode);
         state.resetPage();
-        renderApp();
-        return;
-      }
-
-      // Toggle group collapsed (collapsible headers)
-      const toggleGroupAttr = btn.dataset.toggleGroup;
-      if (toggleGroupAttr) {
-        state.toggleGroupCollapsed(toggleGroupAttr);
         renderApp();
         return;
       }

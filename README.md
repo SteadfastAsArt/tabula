@@ -24,7 +24,7 @@
 
 <br>
 
-[Features](#-features) · [Quick Start](#-quick-start) · [How It Works](#-how-it-works) · [Configuration](#-configuration) · [Contributing](#-contributing)
+[Features](#-features) · [Installation](#-installation) · [Usage](#-usage) · [Configuration](#-configuration) · [Documentation](#-documentation)
 
 <br>
 
@@ -36,7 +36,7 @@
 
 ## 🌟 What is Tabula?
 
-**Tabula** uses GPT-4 to understand your browsing context and intelligently manage your tabs. It captures screenshots, tracks your activity, and suggests which tabs to keep or close — all while keeping your data completely private on your machine.
+**Tabula** uses AI to understand your browsing context and intelligently manage your tabs. It captures screenshots, extracts page content, tracks your activity, and suggests which tabs to keep or close — all while keeping your data completely private on your machine.
 
 > *"Tabula rasa"* — a clean slate. That's what your browser deserves.
 
@@ -50,9 +50,9 @@
 
 ### 🤖 AI-Powered Analysis
 GPT-4 analyzes your tabs based on:
-- Content relevance to your work
+- Page content and metadata
 - Time since last activity  
-- Your personal context & goals
+- Your personal work context
 
 </td>
 <td width="50%">
@@ -60,7 +60,7 @@ GPT-4 analyzes your tabs based on:
 ### 📸 Smart Capture
 Auto-captures when you stay 3+ seconds:
 - Page screenshots (JPEG)
-- Text content extraction
+- Rich content extraction (meta, headings, text)
 - Favicon and metadata
 
 </td>
@@ -71,7 +71,7 @@ Auto-captures when you stay 3+ seconds:
 ### 📊 Daily Reports
 AI-generated summaries including:
 - Main themes of the day
-- Completed work detection
+- Key activities and progress
 - Suggested follow-ups
 
 </td>
@@ -89,9 +89,21 @@ Your data stays yours:
 
 <br>
 
-### Tab Categories
+### 🗂️ Smart Organization
 
-| 🏢 Work | 🔬 Research | 💬 Communication | 🎮 Entertainment | 🛒 Shopping | 📚 Reference | ⚙️ Utility |
+| View Mode | Description |
+|-----------|-------------|
+| **📋 List View** | Sort by last active, age, title, active time |
+| **📁 Category** | Group by AI-detected category (Work, Research, Entertainment...) |
+| **🌐 Domain** | Group by website domain |
+
+All group views are **collapsible** — click headers to expand/collapse.
+
+<br>
+
+### 🏷️ Tab Categories
+
+| 💼 Work | 📚 Research | 💬 Communication | 🎮 Entertainment | 🛒 Shopping | 📌 Reference | ⚙️ Utility |
 |:---:|:---:|:---:|:---:|:---:|:---:|:---:|
 
 <br>
@@ -100,13 +112,13 @@ Your data stays yours:
 
 <br>
 
-## 🚀 Quick Start
+## 🚀 Installation
 
 ### Prerequisites
 
-```
-Node.js 18+  •  Rust  •  Chrome Browser
-```
+- **Node.js 18+**
+- **Rust** (for building desktop app)
+- **Chrome Browser**
 
 <details>
 <summary><b>📦 Platform-specific setup</b></summary>
@@ -130,38 +142,40 @@ sudo apt install libwebkit2gtk-4.1-dev build-essential curl wget file \
 
 <br>
 
-### Step 1: Chrome Extension
+### Step 1: Install Chrome Extension
 
 ```bash
 cd extension
-npm install && npm run build
+npm install
+npm run build
 ```
 
 Then load in Chrome:
-
-```
-chrome://extensions → Developer mode → Load unpacked → Select extension/dist
-```
+1. Go to `chrome://extensions`
+2. Enable **Developer mode**
+3. Click **Load unpacked**
+4. Select the `extension/dist` folder
 
 <br>
 
-### Step 2: Desktop App
+### Step 2: Install Desktop App
 
 ```bash
 cd desktop
 npm install
-npm run tauri dev      # Development
-npm run tauri build    # Production
+npm run tauri dev      # For development
+npm run tauri build    # For production build
 ```
 
 <br>
 
 ### Step 3: Configure
 
-1. Open the desktop app → **Settings**
-2. Enter your **OpenAI API key**
-3. Add your work context *(optional but recommended)*
-4. Save & start browsing!
+1. Open the desktop app
+2. Go to **Settings**
+3. Enter your **OpenAI API key**
+4. (Optional) Add your work context for better AI suggestions
+5. Save and start browsing!
 
 <br>
 
@@ -169,40 +183,35 @@ npm run tauri build    # Production
 
 <br>
 
-## 🔄 How It Works
+## 📖 Usage
 
-<div align="center">
+### Main Dashboard
 
-```
-╔══════════════════════════════════════════════════════════════════════════════╗
-║                                                                              ║
-║    ┌─────────────────┐                    ┌─────────────────────────────┐   ║
-║    │  CHROME         │                    │  TABULA DESKTOP             │   ║
-║    │  ┌───────────┐  │    Screenshots     │  ┌─────────┐   ┌────────┐  │   ║
-║    │  │ Extension │──┼───────────────────►│  │ Storage │──►│   AI   │  │   ║
-║    │  │           │  │    Tab Events      │  └─────────┘   └────────┘  │   ║
-║    │  │           │◄─┼────────────────────│       │                     │   ║
-║    │  └───────────┘  │    Commands        │       ▼                     │   ║
-║    │                 │                    │  ┌─────────────────────┐   │   ║
-║    │                 │                    │  │    Dashboard UI     │   │   ║
-║    └─────────────────┘                    │  └─────────────────────┘   │   ║
-║                                           └─────────────────────────────┘   ║
-║                                                                              ║
-╚══════════════════════════════════════════════════════════════════════════════╝
-```
+The **Tabs** view shows all your open tabs with:
+- Screenshot preview (if captured)
+- AI suggestion (Keep/Close/Unsure)
+- Category badge
+- Active time tracking
 
-</div>
+### Actions
 
-<br>
+| Button | Action |
+|--------|--------|
+| **Analyze Next N** | Run AI analysis on unanalyzed tabs |
+| **Refresh** | Sync with Chrome and capture new screenshots |
+| **Reset** | Clear all AI suggestions to re-analyze |
 
-| Step | Action |
-|:----:|--------|
-| **1** | Extension monitors tab events (open, switch, close) |
-| **2** | After 3s on a tab, captures screenshot + content |
-| **3** | Data sent to local desktop app via HTTP |
-| **4** | Desktop stores everything in local JSON files |
-| **5** | On-demand AI analysis using your OpenAI key |
-| **6** | WebSocket enables closing tabs from desktop |
+### Tab Actions
+
+- **✓ Keep** — Mark tab as important (won't suggest closing)
+- **✕ Close** — Close tab in Chrome and archive it
+
+### Group Views
+
+Switch between viewing modes:
+- **None** — Flat list with sorting and pagination
+- **Category** — Grouped by AI category (collapsible)
+- **Domain** — Grouped by website (collapsible)
 
 <br>
 
@@ -217,14 +226,16 @@ npm run tauri build    # Production
 | Setting | Description | Default |
 |---------|-------------|:-------:|
 | **API Key** | Your OpenAI API key | *required* |
-| **Base URL** | Custom endpoint (proxies) | `api.openai.com/v1` |
+| **Base URL** | Custom API endpoint (for proxies) | `api.openai.com/v1` |
 | **Model** | GPT model to use | `gpt-4o-mini` |
-| **Batch Size** | Tabs per analysis batch | `30` |
-| **User Context** | Your work context | — |
+| **Batch Size** | Tabs to analyze per batch | `30` |
+| **User Context** | Your work description for AI | — |
 
 <br>
 
 ### 💡 User Context Example
+
+The user context helps AI understand what's important to you:
 
 ```
 I'm a software developer working on a React project.
@@ -241,48 +252,15 @@ IMPORTANT: tabula project, client-dashboard
 
 <br>
 
-## 🏗️ Architecture
+## 📚 Documentation
 
-```
-tabula/
-├── extension/              # Chrome Extension (MV3)
-│   ├── src/
-│   │   ├── background.ts       # Service worker
-│   │   ├── content.ts          # DOM extraction
-│   │   └── modules/            # Feature modules
-│   └── manifest.json
-│
-├── desktop/                # Tauri Desktop App
-│   ├── src/                    # Frontend (Vite + TS)
-│   └── src-tauri/src/          # Backend (Rust)
-│       ├── server.rs               # HTTP + WebSocket
-│       ├── storage.rs              # Persistence
-│       └── ai.rs                   # OpenAI integration
-│
-├── shared/                 # Shared TypeScript types
-└── docs/
-    └── ARCHITECTURE.md     # Full technical docs
-```
+For technical details, see the docs folder:
 
-> 📖 **[Read the full architecture documentation →](docs/ARCHITECTURE.md)**
-
-<br>
-
----
-
-<br>
-
-## 📡 API Reference
-
-Local server runs on port `21890`:
-
-| Endpoint | Method | Description |
-|----------|:------:|-------------|
-| `/health` | `GET` | Health check |
-| `/capture` | `POST` | Receive tab capture |
-| `/event` | `POST` | Receive tab events |
-| `/screenshot/:file` | `GET` | Serve screenshots |
-| `/ws` | `WS` | Bidirectional commands |
+| Document | Description |
+|----------|-------------|
+| **[Architecture](docs/ARCHITECTURE.md)** | System overview, tech stack, module breakdown |
+| **[API Reference](docs/API.md)** | HTTP endpoints, WebSocket commands, Tauri commands |
+| **[Data Models](docs/DATA-MODELS.md)** | TypeScript/Rust type definitions, storage format |
 
 <br>
 
@@ -296,28 +274,11 @@ Contributions are welcome! See our **[Contributing Guide](CONTRIBUTING.md)**.
 
 ```bash
 # Clone
-git clone https://github.com/YOUR_USERNAME/tabula.git
+git clone https://github.com/SteadfastAsArt/tabula.git
 
-# Create branch
-git checkout -b feature/your-feature
-
-# Commit (conventional commits)
-git commit -m "feat: add amazing feature"
-
-# Push & PR
-git push origin feature/your-feature
-```
-
-<br>
-
-### Development
-
-```bash
-# Extension with hot reload
-cd extension && npm run watch
-
-# Desktop with hot reload  
-cd desktop && npm run tauri dev
+# Development
+cd extension && npm run watch    # Extension with hot reload
+cd desktop && npm run tauri dev  # Desktop with hot reload
 ```
 
 <br>
