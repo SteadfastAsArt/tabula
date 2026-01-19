@@ -34,6 +34,7 @@ struct ServerState {
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 pub struct TabData {
     pub id: i64,
     #[serde(rename = "windowId")]
