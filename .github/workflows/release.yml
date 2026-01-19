@@ -16,12 +16,16 @@ jobs:
         include:
           - platform: 'macos-latest'
             args: '--target aarch64-apple-darwin'
+            target: 'aarch64-apple-darwin'
           - platform: 'macos-latest'
             args: '--target x86_64-apple-darwin'
+            target: 'x86_64-apple-darwin'
           - platform: 'ubuntu-22.04'
             args: ''
+            target: ''
           - platform: 'windows-latest'
             args: ''
+            target: ''
 
     runs-on: ${{ matrix.platform }}
     steps:
@@ -37,7 +41,7 @@ jobs:
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+          targets: ${{ matrix.target }}
 
       - name: Install Linux dependencies
         if: matrix.platform == 'ubuntu-22.04'
@@ -50,11 +54,12 @@ jobs:
         working-directory: desktop
 
       - name: Build Tauri app
-        uses: tauri-apps/tauri-action@v0
+        uses: tauri-apps/tauri-action@v0.5
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           projectPath: desktop
+          tauriScript: npm run tauri
           tagName: ${{ github.ref_name }}
           releaseName: 'Tabula ${{ github.ref_name }}'
           releaseBody: |
@@ -101,7 +106,7 @@ jobs:
           path: extension/tabula-extension-${{ github.ref_name }}.zip
 
       - name: Upload to Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           files: extension/tabula-extension-${{ github.ref_name }}.zip
           draft: true
