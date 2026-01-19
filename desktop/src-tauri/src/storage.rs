@@ -18,7 +18,7 @@ pub struct TabSuggestion {
     pub decision: String,
     pub reason: String,
     pub category: Option<String>,
-    pub digest: Option<String>,  // AI-generated brief summary of the tab content
+    pub digest: Option<String>, // AI-generated brief summary of the tab content
     pub scored_at: i64,
 }
 
@@ -52,8 +52,8 @@ pub struct Settings {
     pub openai_api_key: Option<String>,
     pub base_url: Option<String>,
     pub model: Option<String>,
-    pub user_context: Option<String>,  // User's work habits, goals, preferences
-    pub analyze_batch_size: Option<u32>,  // Number of tabs to analyze at once (default: 30)
+    pub user_context: Option<String>, // User's work habits, goals, preferences
+    pub analyze_batch_size: Option<u32>, // Number of tabs to analyze at once (default: 30)
 }
 
 impl Default for Settings {
@@ -82,9 +82,9 @@ impl Storage {
             .path()
             .app_data_dir()
             .unwrap_or_else(|_| PathBuf::from("."));
-        
+
         let screenshots_dir = data_dir.join("screenshots");
-        
+
         // Ensure directories exist
         fs::create_dir_all(&data_dir).ok();
         fs::create_dir_all(&screenshots_dir).ok();
@@ -101,13 +101,13 @@ impl Storage {
         storage.load_tabs();
         storage.load_settings();
         storage.load_report();
-        
+
         // Clean up old screenshots (migrate from timestamp-based to simple naming)
         storage.cleanup_old_screenshots();
 
         storage
     }
-    
+
     /// Clean up old screenshots with timestamp in filename (migrate to new naming scheme)
     fn cleanup_old_screenshots(&self) {
         if let Ok(entries) = fs::read_dir(&self.screenshots_dir) {
@@ -142,12 +142,14 @@ impl Storage {
             .values()
             .filter(|t| {
                 t.created_at >= start_of_day
-                    || t.last_active_at.map(|la| la >= start_of_day).unwrap_or(false)
+                    || t.last_active_at
+                        .map(|la| la >= start_of_day)
+                        .unwrap_or(false)
             })
             .cloned()
             .collect()
     }
-    
+
     /// Get today's closed tabs (for history view)
     pub fn get_today_closed_tabs(&self) -> Vec<TabRecord> {
         let today = Local::now().date_naive();
@@ -198,8 +200,9 @@ impl Storage {
     /// Returns the number of tabs cleaned up
     pub fn cleanup_old_tabs(&mut self, days_old: i64) -> usize {
         let cutoff = chrono::Utc::now().timestamp_millis() - (days_old * 24 * 60 * 60 * 1000);
-        
-        let tabs_to_remove: Vec<i64> = self.tabs
+
+        let tabs_to_remove: Vec<i64> = self
+            .tabs
             .iter()
             .filter(|(_, tab)| {
                 // Only remove closed tabs that are old
@@ -211,23 +214,23 @@ impl Storage {
             })
             .map(|(id, _)| *id)
             .collect();
-        
+
         let count = tabs_to_remove.len();
-        
+
         for tab_id in &tabs_to_remove {
             // Delete screenshot
             self.delete_screenshot(*tab_id);
             // Remove from tabs
             self.tabs.remove(tab_id);
         }
-        
+
         if count > 0 {
             println!("[Storage] Cleaned up {} old closed tabs", count);
         }
-        
+
         count
     }
-    
+
     /// Get memory usage stats
     pub fn get_stats(&self) -> (usize, usize, usize) {
         let total_tabs = self.tabs.len();
@@ -240,9 +243,10 @@ impl Storage {
     /// Takes a list of currently open tab IDs from Chrome
     pub fn sync_with_chrome_tabs(&mut self, chrome_tab_ids: &[i64]) -> usize {
         let chrome_set: std::collections::HashSet<i64> = chrome_tab_ids.iter().cloned().collect();
-        
+
         // Find open tabs in storage that are NOT in Chrome anymore
-        let stale_tabs: Vec<i64> = self.tabs
+        let stale_tabs: Vec<i64> = self
+            .tabs
             .iter()
             .filter(|(_, tab)| {
                 // Only check tabs that are still "open" in storage
@@ -250,9 +254,9 @@ impl Storage {
             })
             .map(|(id, _)| *id)
             .collect();
-        
+
         let count = stale_tabs.len();
-        
+
         // Mark them as closed (or remove if they have no useful data)
         let now = chrono::Utc::now().timestamp_millis();
         for tab_id in &stale_tabs {
@@ -268,32 +272,39 @@ impl Storage {
                 }
             }
         }
-        
+
         if count > 0 {
-            println!("[Storage] Synced {} stale tabs (no longer in Chrome)", count);
+            println!(
+                "[Storage] Synced {} stale tabs (no longer in Chrome)",
+                count
+            );
         }
-        
+
         count
     }
 
     /// Save screenshot for a tab. Only ONE screenshot per tab ID is kept (overwrites old one).
-    pub fn save_screenshot(&self, tab_id: i64, base64_data: &str) -> Result<String, Box<dyn std::error::Error>> {
+    pub fn save_screenshot(
+        &self,
+        tab_id: i64,
+        base64_data: &str,
+    ) -> Result<String, Box<dyn std::error::Error>> {
         let bytes = base64::engine::general_purpose::STANDARD.decode(base64_data)?;
-        
+
         // Use fixed filename per tab ID (will overwrite old screenshot)
         let filename = format!("{}.jpg", tab_id);
         let path = self.screenshots_dir.join(&filename);
-        
+
         // Delete old screenshot if exists (no-op if not exists)
         let _ = fs::remove_file(&path);
-        
+
         // Write new screenshot
         let mut file = fs::File::create(&path)?;
         file.write_all(&bytes)?;
-        
+
         Ok(path.to_string_lossy().to_string())
     }
-    
+
     /// Delete screenshot for a tab (called when tab is closed)
     pub fn delete_screenshot(&self, tab_id: i64) {
         let filename = format!("{}.jpg", tab_id);

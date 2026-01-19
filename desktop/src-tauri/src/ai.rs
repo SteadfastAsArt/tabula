@@ -83,24 +83,31 @@ async fn call_openai(
     let request_body = serde_json::to_string(&messages).unwrap_or_default();
     let request_size = request_body.len();
     let image_count = request_body.matches("image_url").count();
-    
+
     // Count words (split by whitespace)
-    let word_count: usize = messages.iter().map(|msg| {
-        let content_str = serde_json::to_string(&msg.content).unwrap_or_default();
-        // Remove base64 image data before counting words
-        let without_base64 = content_str.split("base64,").next().unwrap_or(&content_str);
-        without_base64.split_whitespace().count()
-    }).sum();
-    
+    let word_count: usize = messages
+        .iter()
+        .map(|msg| {
+            let content_str = serde_json::to_string(&msg.content).unwrap_or_default();
+            // Remove base64 image data before counting words
+            let without_base64 = content_str.split("base64,").next().unwrap_or(&content_str);
+            without_base64.split_whitespace().count()
+        })
+        .sum();
+
     println!("\n[AI] ========== Request Start ==========");
     println!("[AI] Model: {}", model);
     println!("[AI] Base URL: {}", base_url);
     println!("[AI] Temperature: {}", temperature);
     println!("[AI] Messages count: {}", messages.len());
-    println!("[AI] Request body size: {} bytes ({:.2} KB)", request_size, request_size as f64 / 1024.0);
+    println!(
+        "[AI] Request body size: {} bytes ({:.2} KB)",
+        request_size,
+        request_size as f64 / 1024.0
+    );
     println!("[AI] Word count (excluding base64): ~{} words", word_count);
     println!("[AI] Image count: {}", image_count);
-    
+
     // Print full message content
     for (i, msg) in messages.iter().enumerate() {
         let content_str = serde_json::to_string_pretty(&msg.content).unwrap_or_default();
@@ -124,11 +131,14 @@ async fn call_openai(
         } else {
             content_str
         };
-        println!("[AI] Message[{}] role={}:\n{}", i, msg.role, display_content);
+        println!(
+            "[AI] Message[{}] role={}:\n{}",
+            i, msg.role, display_content
+        );
     }
 
     let client = Client::builder()
-        .timeout(std::time::Duration::from_secs(120))  // 2 minutes timeout
+        .timeout(std::time::Duration::from_secs(120)) // 2 minutes timeout
         .build()
         .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
     let request = ChatRequest {
@@ -154,7 +164,11 @@ async fn call_openai(
 
     let elapsed = start_time.elapsed();
     let status = response.status();
-    println!("[AI] Response status: {} (took {:.2}s)", status, elapsed.as_secs_f64());
+    println!(
+        "[AI] Response status: {} (took {:.2}s)",
+        status,
+        elapsed.as_secs_f64()
+    );
 
     if !status.is_success() {
         let error_text = response.text().await.unwrap_or_default();
@@ -162,13 +176,10 @@ async fn call_openai(
         return Err(format!("API error: {}", error_text));
     }
 
-    let chat_response: ChatResponse = response
-        .json()
-        .await
-        .map_err(|e| {
-            println!("[AI] Failed to parse response: {}", e);
-            format!("Failed to parse response: {}", e)
-        })?;
+    let chat_response: ChatResponse = response.json().await.map_err(|e| {
+        println!("[AI] Failed to parse response: {}", e);
+        format!("Failed to parse response: {}", e)
+    })?;
 
     let result = chat_response
         .choices
@@ -177,8 +188,15 @@ async fn call_openai(
         .ok_or_else(|| "No response from API".to_string())?;
 
     let response_word_count = result.split_whitespace().count();
-    println!("[AI] Response: {} words, {} bytes", response_word_count, result.len());
-    println!("[AI] ========== Request End (total {:.2}s) ==========\n", start_time.elapsed().as_secs_f64());
+    println!(
+        "[AI] Response: {} words, {} bytes",
+        response_word_count,
+        result.len()
+    );
+    println!(
+        "[AI] ========== Request End (total {:.2}s) ==========\n",
+        start_time.elapsed().as_secs_f64()
+    );
 
     Ok(result)
 }
@@ -261,8 +279,7 @@ Base decisions on:
 2. How recently it was active
 3. Whether the content is transient or worth keeping
 4. Category - entertainment tabs idle for long are good candidates to close"#,
-        TAB_CATEGORIES,
-        user_context_str
+        TAB_CATEGORIES, user_context_str
     );
 
     let mut content_parts: Vec<serde_json::Value> = vec![serde_json::json!({
@@ -280,10 +297,8 @@ Base decisions on:
         if let Some(snapshot) = &tab.snapshot {
             if let Some(path) = &snapshot.screenshot_path {
                 if let Ok(bytes) = fs::read(path) {
-                    let base64 = base64::Engine::encode(
-                        &base64::engine::general_purpose::STANDARD,
-                        &bytes,
-                    );
+                    let base64 =
+                        base64::Engine::encode(&base64::engine::general_purpose::STANDARD, &bytes);
                     content_parts.push(serde_json::json!({
                         "type": "image_url",
                         "image_url": {
@@ -347,9 +362,12 @@ fn truncate_str(s: &str, max_chars: usize) -> String {
     }
 }
 
-pub async fn generate_daily_report(tabs: &[TabRecord], settings: &Settings) -> Result<String, String> {
+pub async fn generate_daily_report(
+    tabs: &[TabRecord],
+    settings: &Settings,
+) -> Result<String, String> {
     println!("\n[AI Report] ========== Generate Daily Report ==========");
-    
+
     if tabs.is_empty() {
         println!("[AI Report] No tabs to report on.");
         return Ok("No tabs to report on.".to_string());
@@ -357,21 +375,37 @@ pub async fn generate_daily_report(tabs: &[TabRecord], settings: &Settings) -> R
 
     // Stats for logging
     let tabs_with_suggestion = tabs.iter().filter(|t| t.suggestion.is_some()).count();
-    let tabs_with_digest = tabs.iter().filter(|t| t.suggestion.as_ref().and_then(|s| s.digest.as_ref()).is_some()).count();
+    let tabs_with_digest = tabs
+        .iter()
+        .filter(|t| {
+            t.suggestion
+                .as_ref()
+                .and_then(|s| s.digest.as_ref())
+                .is_some()
+        })
+        .count();
     let tabs_with_description = tabs.iter().filter(|t| t.description.is_some()).count();
-    
+
     println!("[AI Report] Total tabs: {}", tabs.len());
     println!("[AI Report] Tabs with suggestion: {}", tabs_with_suggestion);
     println!("[AI Report] Tabs with digest: {}", tabs_with_digest);
-    println!("[AI Report] Tabs with description: {}", tabs_with_description);
+    println!(
+        "[AI Report] Tabs with description: {}",
+        tabs_with_description
+    );
 
     // Group tabs by domain
-    let mut domain_groups: std::collections::HashMap<String, Vec<&TabRecord>> = std::collections::HashMap::new();
+    let mut domain_groups: std::collections::HashMap<String, Vec<&TabRecord>> =
+        std::collections::HashMap::new();
     for tab in tabs {
-        let domain = tab.url.as_deref().map(extract_domain).unwrap_or_else(|| "unknown".to_string());
+        let domain = tab
+            .url
+            .as_deref()
+            .map(extract_domain)
+            .unwrap_or_else(|| "unknown".to_string());
         domain_groups.entry(domain).or_default().push(tab);
     }
-    
+
     println!("[AI Report] Domains: {}", domain_groups.len());
     for (domain, domain_tabs) in &domain_groups {
         println!("[AI Report]   - {}: {} tabs", domain, domain_tabs.len());
@@ -386,11 +420,13 @@ pub async fn generate_daily_report(tabs: &[TabRecord], settings: &Settings) -> R
                 .map(|tab| {
                     let title = tab.title.as_deref().unwrap_or("Untitled");
                     let active_time = tab.total_active_ms;
-                    
+
                     // Use category + digest from suggestion, fallback to description
                     let content = if let Some(suggestion) = &tab.suggestion {
                         let category = suggestion.category.as_deref().unwrap_or("uncategorized");
-                        let summary = suggestion.digest.as_deref()
+                        let summary = suggestion
+                            .digest
+                            .as_deref()
                             .or(tab.description.as_deref())
                             .map(|d| truncate_str(d, 300))
                             .unwrap_or_default();
@@ -401,11 +437,12 @@ pub async fn generate_daily_report(tabs: &[TabRecord], settings: &Settings) -> R
                         }
                     } else {
                         // No suggestion, use description
-                        tab.description.as_deref()
+                        tab.description
+                            .as_deref()
                             .map(|d| truncate_str(d, 300))
                             .unwrap_or_default()
                     };
-                    
+
                     if content.is_empty() {
                         format!("  - {} ({}ms)", title, active_time)
                     } else {
@@ -413,13 +450,13 @@ pub async fn generate_daily_report(tabs: &[TabRecord], settings: &Settings) -> R
                     }
                 })
                 .collect();
-            
+
             format!("## {}\n{}", domain, tabs_info.join("\n"))
         })
         .collect();
 
     let today = chrono::Local::now().format("%Y-%m-%d").to_string();
-    
+
     // Build user context if available
     let user_context_str = settings
         .user_context
@@ -435,15 +472,22 @@ pub async fn generate_daily_report(tabs: &[TabRecord], settings: &Settings) -> R
         user_context_str,
         grouped_list.join("\n\n")
     );
-    
+
     let system_content = "You summarize browsing activity as a daily report with key themes, tasks, and next actions. Be concise and actionable. Use markdown formatting. The input is grouped by domain, each tab has a title, active time, and optionally a category tag with content summary.";
-    
+
     // Log complete messages
     let prompt_word_count = prompt_content.split_whitespace().count();
     println!("[AI Report] -------- Messages --------");
-    println!("[AI Report] System message ({} words):\n{}", system_content.split_whitespace().count(), system_content);
+    println!(
+        "[AI Report] System message ({} words):\n{}",
+        system_content.split_whitespace().count(),
+        system_content
+    );
     println!("[AI Report] --------");
-    println!("[AI Report] User message ({} words):\n{}", prompt_word_count, prompt_content);
+    println!(
+        "[AI Report] User message ({} words):\n{}",
+        prompt_word_count, prompt_content
+    );
     println!("[AI Report] -------- End Messages --------");
 
     let messages = vec![
@@ -459,10 +503,13 @@ pub async fn generate_daily_report(tabs: &[TabRecord], settings: &Settings) -> R
 
     println!("[AI Report] Calling OpenAI API...");
     let result = call_openai(settings, messages, 0.3).await;
-    
+
     match &result {
         Ok(content) => {
-            println!("[AI Report] Report generated successfully ({} words)", content.split_whitespace().count());
+            println!(
+                "[AI Report] Report generated successfully ({} words)",
+                content.split_whitespace().count()
+            );
             println!("[AI Report] Response:\n{}", content);
         }
         Err(e) => {
@@ -470,6 +517,6 @@ pub async fn generate_daily_report(tabs: &[TabRecord], settings: &Settings) -> R
         }
     }
     println!("[AI Report] ========== End Daily Report ==========\n");
-    
+
     result
 }

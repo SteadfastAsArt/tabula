@@ -19,7 +19,10 @@ use tokio::sync::broadcast;
 use tokio_util::io::ReaderStream;
 use tower_http::cors::{Any, CorsLayer};
 
-use crate::{storage::{TabRecord, TabSnapshot}, AppState};
+use crate::{
+    storage::{TabRecord, TabSnapshot},
+    AppState,
+};
 
 const SERVER_PORT: u16 = 21890;
 
@@ -93,14 +96,21 @@ pub fn get_command_sender() -> Option<&'static CommandSender> {
     COMMAND_SENDER.get()
 }
 
-pub async fn start_server(storage: AppState, app_handle: AppHandle) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn start_server(
+    storage: AppState,
+    app_handle: AppHandle,
+) -> Result<(), Box<dyn std::error::Error>> {
     // Create broadcast channel for commands (capacity 16)
     let (command_tx, _) = broadcast::channel::<String>(16);
-    
+
     // Store the sender globally
     let _ = COMMAND_SENDER.set(command_tx.clone());
-    
-    let state = ServerState { storage, app_handle, command_tx };
+
+    let state = ServerState {
+        storage,
+        app_handle,
+        command_tx,
+    };
 
     let cors = CorsLayer::new()
         .allow_origin(Any)
@@ -137,7 +147,7 @@ async fn websocket_handler(
 async fn handle_websocket(socket: WebSocket, state: ServerState) {
     let (mut sender, mut receiver) = socket.split();
     let mut command_rx = state.command_tx.subscribe();
-    
+
     // Task to forward commands from broadcast channel to WebSocket
     let send_task = tokio::spawn(async move {
         while let Ok(cmd) = command_rx.recv().await {
@@ -146,7 +156,7 @@ async fn handle_websocket(socket: WebSocket, state: ServerState) {
             }
         }
     });
-    
+
     // Task to receive messages from extension (for acknowledgments, etc.)
     let recv_task = tokio::spawn(async move {
         while let Some(msg) = receiver.next().await {
@@ -164,7 +174,7 @@ async fn handle_websocket(socket: WebSocket, state: ServerState) {
             }
         }
     });
-    
+
     // Wait for either task to complete
     tokio::select! {
         _ = send_task => {},
@@ -184,33 +194,36 @@ async fn handle_capture(
     Json(payload): Json<CapturePayload>,
 ) -> StatusCode {
     let mut storage = state.storage.write().await;
-    
+
     // Save screenshot to disk if present
     let screenshot_path = if let Some(base64_data) = &payload.screenshot_base64 {
         match storage.save_screenshot(payload.tab.id, base64_data) {
             Ok(path) => Some(path),
-            Err(_) => None
+            Err(_) => None,
         }
     } else {
         None
     };
 
     // Update or create tab record
-    let tab = storage.tabs.entry(payload.tab.id).or_insert_with(|| TabRecord {
-        id: payload.tab.id,
-        window_id: payload.tab.window_id,
-        url: payload.tab.url.clone(),
-        title: payload.tab.title.clone(),
-        fav_icon_url: payload.tab.fav_icon_url.clone(),
-        created_at: payload.tab.created_at,
-        last_active_at: payload.tab.last_active_at,
-        total_active_ms: payload.tab.total_active_ms,
-        is_active: payload.tab.is_active,
-        closed_at: None,
-        description: payload.tab.description.clone(),
-        snapshot: None,
-        suggestion: None,
-    });
+    let tab = storage
+        .tabs
+        .entry(payload.tab.id)
+        .or_insert_with(|| TabRecord {
+            id: payload.tab.id,
+            window_id: payload.tab.window_id,
+            url: payload.tab.url.clone(),
+            title: payload.tab.title.clone(),
+            fav_icon_url: payload.tab.fav_icon_url.clone(),
+            created_at: payload.tab.created_at,
+            last_active_at: payload.tab.last_active_at,
+            total_active_ms: payload.tab.total_active_ms,
+            is_active: payload.tab.is_active,
+            closed_at: None,
+            description: payload.tab.description.clone(),
+            snapshot: None,
+            suggestion: None,
+        });
 
     // Update snapshot
     tab.snapshot = Some(TabSnapshot {
@@ -240,10 +253,7 @@ async fn handle_capture(
     StatusCode::OK
 }
 
-async fn handle_event(
-    State(state): State<ServerState>,
-    Json(event): Json<TabEvent>,
-) -> StatusCode {
+async fn handle_event(State(state): State<ServerState>, Json(event): Json<TabEvent>) -> StatusCode {
     let mut storage = state.storage.write().await;
 
     match event.event_type.as_str() {
@@ -253,22 +263,25 @@ async fn handle_event(
             let prev_snapshot = existing.and_then(|t| t.snapshot.clone());
             let prev_suggestion = existing.and_then(|t| t.suggestion.clone());
             let prev_description = existing.and_then(|t| t.description.clone());
-            
-            let tab = storage.tabs.entry(event.tab.id).or_insert_with(|| TabRecord {
-                id: event.tab.id,
-                window_id: event.tab.window_id,
-                url: event.tab.url.clone(),
-                title: event.tab.title.clone(),
-                fav_icon_url: event.tab.fav_icon_url.clone(),
-                created_at: event.tab.created_at,
-                last_active_at: event.tab.last_active_at,
-                total_active_ms: 0,
-                is_active: event.tab.is_active,
-                closed_at: None,
-                description: event.tab.description.clone(),
-                snapshot: None,
-                suggestion: None,
-            });
+
+            let tab = storage
+                .tabs
+                .entry(event.tab.id)
+                .or_insert_with(|| TabRecord {
+                    id: event.tab.id,
+                    window_id: event.tab.window_id,
+                    url: event.tab.url.clone(),
+                    title: event.tab.title.clone(),
+                    fav_icon_url: event.tab.fav_icon_url.clone(),
+                    created_at: event.tab.created_at,
+                    last_active_at: event.tab.last_active_at,
+                    total_active_ms: 0,
+                    is_active: event.tab.is_active,
+                    closed_at: None,
+                    description: event.tab.description.clone(),
+                    snapshot: None,
+                    suggestion: None,
+                });
 
             // Update fields
             tab.url = event.tab.url;
@@ -276,18 +289,18 @@ async fn handle_event(
             tab.fav_icon_url = event.tab.fav_icon_url;
             tab.last_active_at = event.tab.last_active_at;
             tab.is_active = event.tab.is_active;
-            
+
             // Update description if provided, otherwise preserve existing
             if event.tab.description.is_some() {
                 tab.description = event.tab.description;
             } else if tab.description.is_none() {
                 tab.description = prev_description;
             }
-            
+
             // Accumulate active time - take max of existing and incoming
             // Extension sends accumulated time, so take the larger value
             tab.total_active_ms = prev_active_ms.max(event.tab.total_active_ms);
-            
+
             // Preserve existing snapshot and suggestion
             if tab.snapshot.is_none() {
                 tab.snapshot = prev_snapshot;
@@ -300,18 +313,26 @@ async fn handle_event(
             if let Some(tab) = storage.tabs.get_mut(&event.tab.id) {
                 tab.closed_at = Some(event.timestamp);
                 tab.is_active = false;
-                
+
                 // Only delete screenshot if the tab is NOT from today
                 // (keep today's data for daily report)
                 let now = chrono::Local::now();
-                let today_start = now.date_naive()
+                let today_start = now
+                    .date_naive()
                     .and_hms_opt(0, 0, 0)
-                    .map(|dt| dt.and_local_timezone(chrono::Local).unwrap().timestamp_millis())
+                    .map(|dt| {
+                        dt.and_local_timezone(chrono::Local)
+                            .unwrap()
+                            .timestamp_millis()
+                    })
                     .unwrap_or(0);
-                
+
                 let is_today = tab.created_at >= today_start
-                    || tab.last_active_at.map(|la| la >= today_start).unwrap_or(false);
-                
+                    || tab
+                        .last_active_at
+                        .map(|la| la >= today_start)
+                        .unwrap_or(false);
+
                 if !is_today {
                     // Delete screenshot for old tabs to save disk space
                     storage.delete_screenshot(event.tab.id);
@@ -342,7 +363,7 @@ async fn handle_sync(
 ) -> StatusCode {
     let mut storage = state.storage.write().await;
     let count = storage.sync_with_chrome_tabs(&payload.tab_ids);
-    
+
     if count > 0 {
         if let Err(e) = storage.save_tabs() {
             eprintln!("Failed to save tabs after sync: {}", e);
