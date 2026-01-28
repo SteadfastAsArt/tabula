@@ -32,3 +32,6 @@ coverage/
 # Temporary files
 *.tmp
 *.temp
+
+# Analysis files (Claude Code planning)
+docs/analysis/
