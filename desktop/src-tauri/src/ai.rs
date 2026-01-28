@@ -1,12 +1,20 @@
-use reqwest::Client;
+use reqwest::{Client, StatusCode};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
+use std::time::Duration;
+use tokio::time::sleep;
 
 use crate::storage::{Settings, TabRecord, TabSuggestion};
 
 const DEFAULT_MODEL: &str = "gpt-4o-mini";
 const DEFAULT_BASE_URL: &str = "https://api.openai.com/v1";
+const MAX_RETRIES: u32 = 3;
+const INITIAL_RETRY_DELAY_MS: u64 = 1000;
+
+fn is_retryable_error(status: StatusCode) -> bool {
+    matches!(status.as_u16(), 429 | 500 | 502 | 503 | 504)
+}
 
 #[derive(Debug, Serialize)]
 struct ChatMessage {
@@ -148,57 +156,84 @@ async fn call_openai(
     };
 
     let start_time = std::time::Instant::now();
-    println!("[AI] Sending request...");
+    let mut delay = Duration::from_millis(INITIAL_RETRY_DELAY_MS);
 
-    let response = client
-        .post(format!("{}/chat/completions", base_url))
-        .header("Authorization", format!("Bearer {}", api_key))
-        .header("Content-Type", "application/json")
-        .json(&request)
-        .send()
-        .await
-        .map_err(|e| {
-            println!("[AI] Request failed: {}", e);
-            format!("Request failed: {}", e)
-        })?;
+    for attempt in 1..=MAX_RETRIES {
+        println!("[AI] Sending request (attempt {}/{})...", attempt, MAX_RETRIES);
 
-    let elapsed = start_time.elapsed();
-    let status = response.status();
-    println!(
-        "[AI] Response status: {} (took {:.2}s)",
-        status,
-        elapsed.as_secs_f64()
-    );
+        let response = client
+            .post(format!("{}/chat/completions", base_url))
+            .header("Authorization", format!("Bearer {}", api_key))
+            .header("Content-Type", "application/json")
+            .json(&request)
+            .send()
+            .await;
 
-    if !status.is_success() {
-        let error_text = response.text().await.unwrap_or_default();
-        println!("[AI] API error: {}", error_text);
-        return Err(format!("API error: {}", error_text));
+        match response {
+            Ok(resp) => {
+                let elapsed = start_time.elapsed();
+                let status = resp.status();
+                println!(
+                    "[AI] Response status: {} (took {:.2}s)",
+                    status,
+                    elapsed.as_secs_f64()
+                );
+
+                if status.is_success() {
+                    let chat_response: ChatResponse = resp.json().await.map_err(|e| {
+                        println!("[AI] Failed to parse response: {}", e);
+                        format!("Failed to parse response: {}", e)
+                    })?;
+
+                    let result = chat_response
+                        .choices
+                        .first()
+                        .map(|c| c.message.content.clone())
+                        .ok_or_else(|| "No response from API".to_string())?;
+
+                    let response_word_count = result.split_whitespace().count();
+                    println!(
+                        "[AI] Response: {} words, {} bytes",
+                        response_word_count,
+                        result.len()
+                    );
+                    println!(
+                        "[AI] ========== Request End (total {:.2}s) ==========\n",
+                        start_time.elapsed().as_secs_f64()
+                    );
+
+                    return Ok(result);
+                } else if is_retryable_error(status) && attempt < MAX_RETRIES {
+                    let error_text = resp.text().await.unwrap_or_default();
+                    println!(
+                        "[AI] Retryable error ({}): {}. Retry {}/{} after {:?}",
+                        status, error_text, attempt, MAX_RETRIES, delay
+                    );
+                    sleep(delay).await;
+                    delay *= 2;
+                } else {
+                    let error_text = resp.text().await.unwrap_or_default();
+                    println!("[AI] API error: {}", error_text);
+                    return Err(format!("API error ({}): {}", status, error_text));
+                }
+            }
+            Err(e) => {
+                if attempt < MAX_RETRIES {
+                    println!(
+                        "[AI] Network error: {}. Retry {}/{} after {:?}",
+                        e, attempt, MAX_RETRIES, delay
+                    );
+                    sleep(delay).await;
+                    delay *= 2;
+                } else {
+                    println!("[AI] Request failed after {} attempts: {}", MAX_RETRIES, e);
+                    return Err(format!("Request failed: {}", e));
+                }
+            }
+        }
     }
 
-    let chat_response: ChatResponse = response.json().await.map_err(|e| {
-        println!("[AI] Failed to parse response: {}", e);
-        format!("Failed to parse response: {}", e)
-    })?;
-
-    let result = chat_response
-        .choices
-        .first()
-        .map(|c| c.message.content.clone())
-        .ok_or_else(|| "No response from API".to_string())?;
-
-    let response_word_count = result.split_whitespace().count();
-    println!(
-        "[AI] Response: {} words, {} bytes",
-        response_word_count,
-        result.len()
-    );
-    println!(
-        "[AI] ========== Request End (total {:.2}s) ==========\n",
-        start_time.elapsed().as_secs_f64()
-    );
-
-    Ok(result)
+    unreachable!("Retry loop should have returned")
 }
 
 fn format_tab_for_prompt(tab: &TabRecord) -> String {
