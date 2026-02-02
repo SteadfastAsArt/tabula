@@ -14,8 +14,10 @@ import {
   getCategoryLabel,
   getCategoryClass,
 } from "../utils";
+import { isTabSelected, selectionMode } from "../state";
 
 export function renderTabCard(tab: TabRecord): string {
+  const isSelected = isTabSelected(tab.id);
   const suggestion = tab.suggestion;
   const suggestionClass = suggestion ? `suggestion-${suggestion.decision}` : "";
   const hasScreenshot = !!tab.snapshot?.screenshot_path;
@@ -29,11 +31,16 @@ export function renderTabCard(tab: TabRecord): string {
     : null;
 
   return `
-    <div class="tab-card ${suggestionClass}" data-tab-id="${tab.id}">
+    <div class="tab-card ${suggestionClass} ${isSelected ? "selected" : ""}" data-tab-id="${tab.id}">
+      ${selectionMode ? `
+        <div class="tab-checkbox" data-action="toggle-select" data-tab-id="${tab.id}">
+          <input type="checkbox" ${isSelected ? "checked" : ""} tabindex="-1" />
+        </div>
+      ` : ""}
       ${
         hasScreenshot
           ? `
-        <div class="tab-screenshot">
+        <div class="tab-screenshot" ${selectionMode ? 'data-action="toggle-select" data-tab-id="' + tab.id + '"' : ""}>
           <img src="${screenshotUrl}" alt="Screenshot" loading="lazy" />
           <span class="screenshot-age ${screenshotFreshness?.isStale ? "stale" : ""}" title="Screenshot captured ${screenshotFreshness?.label}">
             📷 ${screenshotFreshness?.label}
@@ -41,7 +48,7 @@ export function renderTabCard(tab: TabRecord): string {
         </div>
       `
           : `
-        <div class="tab-screenshot placeholder">
+        <div class="tab-screenshot placeholder" ${selectionMode ? 'data-action="toggle-select" data-tab-id="' + tab.id + '"' : ""}>
           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
             <rect x="3" y="3" width="18" height="18" rx="2"/>
             <circle cx="8.5" cy="8.5" r="1.5"/>
@@ -94,8 +101,16 @@ export function renderTabCard(tab: TabRecord): string {
           suggestion
             ? `
           <div class="tab-suggestion ${suggestion.decision}">
-            <span class="decision">${suggestion.decision.toUpperCase()}</span>
+            <div class="suggestion-header">
+              <span class="decision">${suggestion.decision.toUpperCase()}</span>
+              <button class="btn-disagree" title="I disagree with this suggestion" data-action="disagree" data-tab-id="${tab.id}" data-current="${suggestion.decision}">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"/>
+                </svg>
+              </button>
+            </div>
             <span class="reason">${escapeHtml(suggestion.reason)}</span>
+            ${suggestion.digest ? `<div class="tab-digest">${escapeHtml(suggestion.digest)}</div>` : ""}
           </div>
         `
             : `

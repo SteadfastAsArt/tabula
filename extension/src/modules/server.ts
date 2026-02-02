@@ -29,3 +29,41 @@ export async function checkServerConnection(): Promise<boolean> {
     return false;
   }
 }
+
+export interface TabInfo {
+  found: boolean;
+  suggestion: string | null;
+  reason: string | null;
+  category: string | null;
+}
+
+export interface Stats {
+  total_tabs: number;
+  close_suggested: number;
+  keep_suggested: number;
+  unanalyzed: number;
+}
+
+export async function getTabInfo(tabId: number): Promise<TabInfo | null> {
+  try {
+    const response = await fetch(`${SERVER_URL}/tab/${tabId}`, { method: "GET" });
+    if (response.ok) {
+      return await response.json();
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+export async function getStats(): Promise<Stats | null> {
+  try {
+    const response = await fetch(`${SERVER_URL}/stats`, { method: "GET" });
+    if (response.ok) {
+      return await response.json();
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}

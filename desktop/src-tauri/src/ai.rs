@@ -5,7 +5,7 @@ use std::fs;
 use std::time::Duration;
 use tokio::time::sleep;
 
-use crate::storage::{Settings, TabRecord, TabSuggestion};
+use crate::storage::{DecisionPatterns, Settings, TabRecord, TabSuggestion};
 
 const DEFAULT_MODEL: &str = "gpt-4o-mini";
 const DEFAULT_BASE_URL: &str = "https://api.openai.com/v1";
@@ -279,6 +279,7 @@ Categories to classify tabs:
 pub async fn suggest_tabs(
     tabs: &[TabRecord],
     settings: &Settings,
+    patterns: Option<&DecisionPatterns>,
 ) -> Result<HashMap<i64, TabSuggestion>, String> {
     if tabs.is_empty() {
         return Ok(HashMap::new());
@@ -295,12 +296,57 @@ pub async fn suggest_tabs(
         .map(|ctx| format!("\n\nUser's context and preferences:\n{}", ctx))
         .unwrap_or_default();
 
+    // Build learned patterns context
+    let patterns_str = if let Some(p) = patterns {
+        if p.total_decisions >= 10 {
+            let mut parts = Vec::new();
+
+            if !p.preferred_domains.is_empty() {
+                parts.push(format!(
+                    "- User tends to KEEP tabs from: {}",
+                    p.preferred_domains.join(", ")
+                ));
+            }
+
+            if !p.avoided_domains.is_empty() {
+                parts.push(format!(
+                    "- User tends to CLOSE tabs from: {}",
+                    p.avoided_domains.join(", ")
+                ));
+            }
+
+            if p.avg_kept_active_time_ms > 0 && p.avg_closed_active_time_ms > 0 {
+                let kept_mins = p.avg_kept_active_time_ms / 60000;
+                let closed_mins = p.avg_closed_active_time_ms / 60000;
+                parts.push(format!(
+                    "- Kept tabs average {}min active, closed tabs average {}min active",
+                    kept_mins, closed_mins
+                ));
+            }
+
+            parts.push(format!(
+                "- AI agreement rate with user: {:.0}%",
+                p.ai_agreement_rate
+            ));
+
+            if parts.is_empty() {
+                String::new()
+            } else {
+                format!("\n\nLearned from {} user decisions:\n{}", p.total_decisions, parts.join("\n"))
+            }
+        } else {
+            String::new()
+        }
+    } else {
+        String::new()
+    };
+
     // Build content with text and images
     let prompt = format!(
         r#"Analyze these browser tabs and suggest which to keep or close.
 
 {}
-{}
+{}{}
 
 Return JSON array only. Each item must have:
 - "tabId": number
@@ -314,7 +360,7 @@ Base decisions on:
 2. How recently it was active
 3. Whether the content is transient or worth keeping
 4. Category - entertainment tabs idle for long are good candidates to close"#,
-        TAB_CATEGORIES, user_context_str
+        TAB_CATEGORIES, user_context_str, patterns_str
     );
 
     let mut content_parts: Vec<serde_json::Value> = vec![serde_json::json!({

@@ -10,7 +10,7 @@
 
 import { SYNC_INTERVAL_MS } from "./modules/config";
 import { getState } from "./modules/state";
-import { checkServerConnection } from "./modules/server";
+import { checkServerConnection, getTabInfo, getStats } from "./modules/server";
 import { syncActiveTime } from "./modules/timer";
 import { captureAndSendTab } from "./modules/screenshot";
 import {
@@ -60,6 +60,21 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     syncAllTabs()
       .then(() => sendResponse({ ok: true }))
       .catch((err) => sendResponse({ error: String(err) }));
+    return true;
+  }
+
+  if (message.type === "getTabInfo") {
+    const tabId = message.tabId as number;
+    getTabInfo(tabId)
+      .then((info) => sendResponse(info))
+      .catch(() => sendResponse(null));
+    return true;
+  }
+
+  if (message.type === "getServerStats") {
+    getStats()
+      .then((stats) => sendResponse(stats))
+      .catch(() => sendResponse(null));
     return true;
   }
 });

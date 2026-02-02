@@ -5,7 +5,29 @@
 import type { TabRecord, Settings, SortField, SortOrder, TabCategory, GroupMode } from "../types";
 import { sortTabs, getStats, groupTabsByCategory, groupTabsByDomain, CATEGORIES, getCategoryInfo } from "../utils";
 import { renderTabCard } from "../components/TabCard";
-import { TABS_PER_PAGE, isGroupCollapsed } from "../state";
+import { renderClosedTabCard } from "../components/ClosedTabCard";
+import { TABS_PER_PAGE, isGroupCollapsed, selectedTabs, selectionMode } from "../state";
+
+// Store recently closed tabs in module state (will be populated by main.ts)
+let recentlyClosedTabs: TabRecord[] = [];
+
+export function setRecentlyClosedTabs(tabs: TabRecord[]): void {
+  recentlyClosedTabs = tabs;
+}
+
+export function getRecentlyClosedTabsState(): TabRecord[] {
+  return recentlyClosedTabs;
+}
+
+// Helper to get tabs suggested for closing
+function getCloseSuggestedTabs(tabs: TabRecord[]): TabRecord[] {
+  return tabs.filter((t) => t.suggestion?.decision === "close");
+}
+
+// Helper to get tab IDs
+function getTabIds(tabs: TabRecord[]): number[] {
+  return tabs.map((t) => t.id);
+}
 
 export function renderTabsView(
   tabs: TabRecord[],
@@ -18,10 +40,11 @@ export function renderTabsView(
   const openTabs = tabs.filter((t) => !t.closed_at);
   const stats = getStats(tabs);
   const batchSize = settings.analyze_batch_size || 30;
+  const closeSuggestedCount = getCloseSuggestedTabs(openTabs).length;
 
   // Check if we're in grouped mode
   if (groupMode !== "none") {
-    return renderGroupedMode(openTabs, stats, batchSize, sortField, sortOrder, groupMode);
+    return renderGroupedMode(openTabs, stats, batchSize, sortField, sortOrder, groupMode, closeSuggestedCount);
   }
 
   // Normal sorted view with pagination
@@ -37,7 +60,8 @@ export function renderTabsView(
 
   return `
     <div class="view-wrapper">
-      ${renderHeader(stats, batchSize)}
+      ${renderHeader(stats, batchSize, closeSuggestedCount)}
+      ${renderBatchActionBar()}
       <div class="toolbar">
         ${renderGroupControls(groupMode)}
         <div class="toolbar-divider"></div>
@@ -46,10 +70,11 @@ export function renderTabsView(
       </div>
       <div id="statusMessage" class="status-message"></div>
       <div class="scroll-area">
-        <div class="tabs-grid">
+        <div class="tabs-grid" data-all-tab-ids="${getTabIds(paginatedTabs).join(",")}">
           ${paginatedTabs.map((tab) => renderTabCard(tab)).join("")}
           ${paginatedTabs.length === 0 ? renderEmptyState() : ""}
         </div>
+        ${renderRecentlyClosedSection()}
       </div>
     </div>
   `;
@@ -61,7 +86,8 @@ function renderGroupedMode(
   batchSize: number,
   sortField: SortField,
   sortOrder: SortOrder,
-  groupMode: GroupMode
+  groupMode: GroupMode,
+  closeSuggestedCount: number
 ): string {
   let groupsHtml = "";
 
@@ -83,7 +109,8 @@ function renderGroupedMode(
 
   return `
     <div class="view-wrapper">
-      ${renderHeader(stats, batchSize)}
+      ${renderHeader(stats, batchSize, closeSuggestedCount)}
+      ${renderBatchActionBar()}
       <div class="toolbar">
         ${renderGroupControls(groupMode)}
         <div class="toolbar-divider"></div>
@@ -94,6 +121,7 @@ function renderGroupedMode(
         <div class="grouped-container">
           ${groupsHtml}
         </div>
+        ${renderRecentlyClosedSection()}
       </div>
     </div>
   `;
@@ -103,6 +131,7 @@ function renderCategoryGroup(category: TabCategory, tabs: TabRecord[], sortField
   const info = getCategoryInfo(category);
   const isCollapsed = isGroupCollapsed(`category-${category}`);
   const sortedTabs = sortTabs(tabs, sortField, sortOrder);
+  const tabIds = getTabIds(tabs);
 
   return `
     <div class="category-group ${isCollapsed ? "collapsed" : ""}" data-category="${category}" data-group-id="category-${category}">
@@ -112,6 +141,14 @@ function renderCategoryGroup(category: TabCategory, tabs: TabRecord[], sortField
           <span class="category-icon">${info.icon}</span>
           <span class="category-name">${info.label}</span>
           <span class="category-count">${tabs.length}</span>
+        </div>
+        <div class="category-actions" onclick="event.stopPropagation()">
+          <button class="btn-small secondary" data-action="select-group" data-tab-ids="${tabIds.join(",")}" title="Select all in group">
+            Select
+          </button>
+          <button class="btn-small danger" data-action="close-group" data-tab-ids="${tabIds.join(",")}" title="Close all tabs in this category">
+            Close All
+          </button>
         </div>
       </div>
       <div class="category-tabs" style="${isCollapsed ? "display: none;" : ""}">
@@ -128,6 +165,7 @@ function renderDomainGroup(domain: string, tabs: TabRecord[], sortField: SortFie
   const sortedTabs = sortTabs(tabs, sortField, sortOrder);
   // Get favicon from first tab
   const favicon = tabs[0]?.fav_icon_url;
+  const tabIds = getTabIds(tabs);
 
   return `
     <div class="domain-group ${isCollapsed ? "collapsed" : ""}" data-domain="${domain}" data-group-id="domain-${domain}">
@@ -137,6 +175,14 @@ function renderDomainGroup(domain: string, tabs: TabRecord[], sortField: SortFie
           ${favicon ? `<img class="domain-favicon" src="${favicon}" onerror="this.style.display='none'" />` : '<span class="domain-icon">🌐</span>'}
           <span class="domain-name">${domain}</span>
           <span class="domain-count">${tabs.length}</span>
+        </div>
+        <div class="domain-actions" onclick="event.stopPropagation()">
+          <button class="btn-small secondary" data-action="select-group" data-tab-ids="${tabIds.join(",")}" title="Select all in group">
+            Select
+          </button>
+          <button class="btn-small danger" data-action="close-group" data-tab-ids="${tabIds.join(",")}" title="Close all tabs from this domain">
+            Close All
+          </button>
         </div>
       </div>
       <div class="domain-tabs" style="${isCollapsed ? "display: none;" : ""}">
@@ -148,7 +194,7 @@ function renderDomainGroup(domain: string, tabs: TabRecord[], sortField: SortFie
   `;
 }
 
-function renderHeader(stats: ReturnType<typeof getStats>, batchSize: number): string {
+function renderHeader(stats: ReturnType<typeof getStats>, batchSize: number, closeSuggestedCount: number): string {
   return `
     <header class="view-header">
       <div>
@@ -156,6 +202,29 @@ function renderHeader(stats: ReturnType<typeof getStats>, batchSize: number): st
         <p class="subtitle">${stats.total} tabs total, ${stats.unanalyzed} pending analysis</p>
       </div>
       <div class="actions">
+        <button id="toggleSelectionBtn" class="btn ${selectionMode ? "active" : "secondary"}" title="Toggle selection mode (Ctrl+A to select all)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="18" height="18" rx="2"/>
+            <path d="M9 12l2 2 4-4"/>
+          </svg>
+          ${selectionMode ? `${selectedTabs.size} selected` : "Select"}
+        </button>
+        ${closeSuggestedCount > 0 ? `
+        <button id="confirmAllSuggestionsBtn" class="btn success" title="Confirm all AI suggestions: close tabs marked 'close'">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20 6L9 17l-5-5"/>
+          </svg>
+          Confirm All (${closeSuggestedCount})
+        </button>
+        ` : ""}
+        <button id="analyzeRulesBtn" class="btn secondary" ${stats.unanalyzed === 0 ? "disabled" : ""} title="Quick analysis using rules (no AI required)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>
+            <rect x="9" y="3" width="6" height="4" rx="1"/>
+            <path d="M9 12l2 2 4-4"/>
+          </svg>
+          Quick Rules
+        </button>
         <button id="analyzeBatchBtn" class="btn primary" ${stats.unanalyzed === 0 ? "disabled" : ""}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M12 2a10 10 0 1 0 10 10"/>
@@ -183,6 +252,29 @@ function renderHeader(stats: ReturnType<typeof getStats>, batchSize: number): st
         </button>
       </div>
     </header>
+  `;
+}
+
+function renderBatchActionBar(): string {
+  if (!selectionMode || selectedTabs.size === 0) return "";
+
+  return `
+    <div class="batch-action-bar">
+      <div class="batch-info">
+        <span>${selectedTabs.size} tab${selectedTabs.size > 1 ? "s" : ""} selected</span>
+        <button id="selectAllVisibleBtn" class="btn-link">Select All</button>
+        <button id="deselectAllBtn" class="btn-link">Deselect All</button>
+      </div>
+      <div class="batch-actions">
+        <button id="closeSelectedBtn" class="btn danger">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 6L6 18M6 6l12 12"/>
+          </svg>
+          Close Selected
+        </button>
+        <button id="cancelSelectionBtn" class="btn secondary">Cancel</button>
+      </div>
+    </div>
   `;
 }
 
@@ -246,4 +338,33 @@ function renderPagination(currentPage: number, totalPages: number, hasPrev: bool
 
 function renderEmptyState(): string {
   return '<div class="empty-state">No tabs tracked yet. Make sure the Chrome extension is connected and click a tab to capture it.</div>';
+}
+
+function renderRecentlyClosedSection(): string {
+  if (recentlyClosedTabs.length === 0) return "";
+
+  const isCollapsed = isGroupCollapsed("recently-closed");
+  const displayTabs = recentlyClosedTabs.slice(0, 10); // Show max 10 tabs
+
+  return `
+    <div class="recently-closed-section ${isCollapsed ? "collapsed" : ""}" data-group-id="recently-closed">
+      <div class="recently-closed-header collapsible" data-toggle-group="recently-closed">
+        <div class="recently-closed-title">
+          <span class="collapse-icon">${isCollapsed ? "▶" : "▼"}</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12,6 12,12 16,14"/>
+          </svg>
+          <span>Recently Closed</span>
+          <span class="recently-closed-count">${recentlyClosedTabs.length}</span>
+        </div>
+      </div>
+      <div class="recently-closed-content" style="${isCollapsed ? "display: none;" : ""}">
+        <div class="closed-tabs-list">
+          ${displayTabs.map((tab) => renderClosedTabCard(tab)).join("")}
+        </div>
+        ${recentlyClosedTabs.length > 10 ? `<div class="recently-closed-more">And ${recentlyClosedTabs.length - 10} more...</div>` : ""}
+      </div>
+    </div>
+  `;
 }

@@ -32,12 +32,35 @@ export interface TabRecord {
   suggestion?: TabSuggestion;
 }
 
+export interface RuleConfig {
+  enabled: boolean;
+  inactive_days_threshold: number;
+  min_active_seconds: number;
+  duplicate_domain_threshold: number;
+  whitelist_domains: string[];
+  blacklist_domains: string[];
+}
+
+export interface ReminderConfig {
+  enabled: boolean;
+  lunch_reminder: boolean;
+  lunch_time: string;           // HH:MM format
+  evening_reminder: boolean;
+  evening_time: string;         // HH:MM format
+  tab_threshold_reminder: boolean;
+  tab_threshold: number;
+  interval_reminder: boolean;
+  interval_hours: number;
+}
+
 export interface Settings {
   openai_api_key?: string;
   base_url?: string;
   model?: string;
   user_context?: string;
   analyze_batch_size?: number;
+  rules?: RuleConfig;
+  reminders?: ReminderConfig;
 }
 
 export interface DailyReport {

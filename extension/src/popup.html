@@ -13,7 +13,7 @@
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
         background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
         color: #e8e8e8;
-        min-width: 280px;
+        min-width: 300px;
         padding: 16px;
       }
       .header {
@@ -60,6 +60,81 @@
       .status-value.disconnected {
         color: #f87171;
       }
+      .status-value.warning {
+        color: #fbbf24;
+      }
+
+      /* Current Tab Section */
+      .current-tab-section {
+        background: rgba(99, 102, 241, 0.1);
+        border: 1px solid rgba(99, 102, 241, 0.3);
+        border-radius: 10px;
+        padding: 14px;
+        margin-bottom: 12px;
+      }
+      .current-tab-section.has-suggestion {
+        border-color: rgba(99, 102, 241, 0.5);
+      }
+      .current-tab-section.suggestion-close {
+        background: rgba(239, 68, 68, 0.1);
+        border-color: rgba(239, 68, 68, 0.4);
+      }
+      .current-tab-section.suggestion-keep {
+        background: rgba(34, 197, 94, 0.1);
+        border-color: rgba(34, 197, 94, 0.4);
+      }
+      .section-title {
+        font-size: 11px;
+        text-transform: uppercase;
+        color: #8b8b9a;
+        margin-bottom: 8px;
+        letter-spacing: 0.5px;
+      }
+      .suggestion-display {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 8px;
+      }
+      .suggestion-badge {
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+      }
+      .suggestion-badge.keep {
+        background: rgba(34, 197, 94, 0.2);
+        color: #4ade80;
+      }
+      .suggestion-badge.close {
+        background: rgba(239, 68, 68, 0.2);
+        color: #f87171;
+      }
+      .suggestion-badge.unsure {
+        background: rgba(251, 191, 36, 0.2);
+        color: #fbbf24;
+      }
+      .suggestion-badge.none {
+        background: rgba(255, 255, 255, 0.1);
+        color: #a0a0a0;
+      }
+      .suggestion-reason {
+        font-size: 12px;
+        color: #b0b0b8;
+        line-height: 1.4;
+      }
+      .quick-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 10px;
+      }
+      .quick-actions button {
+        flex: 1;
+        padding: 8px;
+        font-size: 12px;
+      }
+
       .actions {
         display: flex;
         flex-direction: column;
@@ -90,6 +165,22 @@
       }
       button.secondary:hover {
         background: rgba(255, 255, 255, 0.12);
+      }
+      button.keep {
+        background: rgba(34, 197, 94, 0.2);
+        color: #4ade80;
+        border: 1px solid rgba(34, 197, 94, 0.3);
+      }
+      button.keep:hover {
+        background: rgba(34, 197, 94, 0.3);
+      }
+      button.close-btn {
+        background: rgba(239, 68, 68, 0.2);
+        color: #f87171;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+      }
+      button.close-btn:hover {
+        background: rgba(239, 68, 68, 0.3);
       }
       button:disabled {
         opacity: 0.5;
@@ -132,11 +223,28 @@
         <span class="status-label">Tabs Tracked</span>
         <span id="tabCount" class="status-value">0</span>
       </div>
+      <div class="status-row">
+        <span class="status-label">Suggested Close</span>
+        <span id="closeSuggestedCount" class="status-value">-</span>
+      </div>
+    </div>
+
+    <div id="currentTabSection" class="current-tab-section" style="display: none;">
+      <div class="section-title">Current Tab</div>
+      <div class="suggestion-display">
+        <span id="suggestionBadge" class="suggestion-badge none">Not Analyzed</span>
+      </div>
+      <div id="suggestionReason" class="suggestion-reason"></div>
+      <div class="quick-actions">
+        <button id="keepBtn" class="keep" disabled>✓ Keep</button>
+        <button id="closeCurrentBtn" class="close-btn" disabled>✕ Close</button>
+      </div>
     </div>
 
     <div class="actions">
-      <button id="captureBtn" class="primary" disabled title="截图当前 Tab 并发送到桌面应用">📸 Capture Current Tab</button>
-      <button id="syncBtn" class="secondary" disabled title="将所有打开的 Tab 发送到桌面应用（用于首次同步）">🔄 Sync All Tabs</button>
+      <button id="captureBtn" class="primary" disabled>📸 Capture Current Tab</button>
+      <button id="syncBtn" class="secondary" disabled>🔄 Sync All Tabs</button>
+      <button id="openDesktopBtn" class="secondary">🖥️ Open Desktop App</button>
     </div>
 
     <div id="message"></div>

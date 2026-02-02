@@ -28,6 +28,10 @@ export let groupMode: GroupMode = "none";
 export let collapsedGroups: Set<string> = new Set();
 export let theme: "dark" | "light" = "dark";
 
+// Selection state for batch operations
+export let selectedTabs: Set<number> = new Set();
+export let selectionMode: boolean = false;
+
 // State setters
 export function setTabs(newTabs: TabRecord[]): void {
   tabs = newTabs;
@@ -106,4 +110,50 @@ export function setTheme(newTheme: "dark" | "light"): void {
 
 export function toggleTheme(): void {
   theme = theme === "dark" ? "light" : "dark";
+}
+
+// Selection state setters
+export function toggleTabSelection(tabId: number): void {
+  if (selectedTabs.has(tabId)) {
+    selectedTabs.delete(tabId);
+  } else {
+    selectedTabs.add(tabId);
+  }
+  // Auto-enable selection mode when first tab is selected
+  selectionMode = selectedTabs.size > 0;
+}
+
+export function selectTab(tabId: number): void {
+  selectedTabs.add(tabId);
+  selectionMode = true;
+}
+
+export function deselectTab(tabId: number): void {
+  selectedTabs.delete(tabId);
+  selectionMode = selectedTabs.size > 0;
+}
+
+export function selectAllTabs(tabIds: number[]): void {
+  tabIds.forEach((id) => selectedTabs.add(id));
+  selectionMode = selectedTabs.size > 0;
+}
+
+export function deselectAllTabs(): void {
+  selectedTabs.clear();
+  selectionMode = false;
+}
+
+export function isTabSelected(tabId: number): boolean {
+  return selectedTabs.has(tabId);
+}
+
+export function getSelectedTabIds(): number[] {
+  return Array.from(selectedTabs);
+}
+
+export function setSelectionMode(mode: boolean): void {
+  selectionMode = mode;
+  if (!mode) {
+    selectedTabs.clear();
+  }
 }

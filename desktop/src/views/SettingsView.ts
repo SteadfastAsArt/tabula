@@ -69,6 +69,87 @@ export function renderSettingsView(settings: Settings): string {
           </div>
 
           <div class="settings-section">
+            <h2>Rule-Based Analysis</h2>
+            <p class="section-desc">Quick analysis using rules - no AI/API key required. These rules run when you click "Quick Rules".</p>
+            <div class="form-group">
+              <label class="checkbox-label">
+                <input type="checkbox" id="rulesEnabled" ${settings.rules?.enabled !== false ? "checked" : ""} />
+                Enable rule-based analysis
+              </label>
+            </div>
+            <div class="form-group">
+              <label for="inactiveDays">Inactive Days Threshold</label>
+              <input type="number" id="inactiveDays" min="1" max="365" value="${settings.rules?.inactive_days_threshold || 30}" />
+              <span class="hint">Suggest closing tabs inactive for more than this many days</span>
+            </div>
+            <div class="form-group">
+              <label for="minActiveSeconds">Minimum Active Time (seconds)</label>
+              <input type="number" id="minActiveSeconds" min="1" max="3600" value="${settings.rules?.min_active_seconds || 30}" />
+              <span class="hint">Tabs with less active time than this may be "forgotten"</span>
+            </div>
+            <div class="form-group">
+              <label for="duplicateDomainThreshold">Duplicate Domain Threshold</label>
+              <input type="number" id="duplicateDomainThreshold" min="2" max="50" value="${settings.rules?.duplicate_domain_threshold || 5}" />
+              <span class="hint">Warn when you have more than this many tabs from the same domain</span>
+            </div>
+            <div class="form-group">
+              <label for="whitelistDomains">Whitelist Domains (always keep)</label>
+              <input type="text" id="whitelistDomains" placeholder="github.com, docs.google.com" value="${(settings.rules?.whitelist_domains || []).join(", ")}" />
+              <span class="hint">Comma-separated list of domains to always keep</span>
+            </div>
+            <div class="form-group">
+              <label for="blacklistDomains">Blacklist Domains (always close)</label>
+              <input type="text" id="blacklistDomains" placeholder="facebook.com, twitter.com" value="${(settings.rules?.blacklist_domains || []).join(", ")}" />
+              <span class="hint">Comma-separated list of domains to always suggest closing</span>
+            </div>
+          </div>
+
+          <div class="settings-section">
+            <h2>Smart Reminders</h2>
+            <p class="section-desc">Get proactive notifications to help you manage your tabs throughout the day.</p>
+            <div class="form-group">
+              <label class="checkbox-label">
+                <input type="checkbox" id="remindersEnabled" ${settings.reminders?.enabled !== false ? "checked" : ""} />
+                Enable smart reminders
+              </label>
+            </div>
+            <div class="form-row">
+              <div class="form-group half">
+                <label class="checkbox-label">
+                  <input type="checkbox" id="lunchReminder" ${settings.reminders?.lunch_reminder !== false ? "checked" : ""} />
+                  Lunch break reminder
+                </label>
+                <input type="time" id="lunchTime" value="${settings.reminders?.lunch_time || "11:30"}" />
+              </div>
+              <div class="form-group half">
+                <label class="checkbox-label">
+                  <input type="checkbox" id="eveningReminder" ${settings.reminders?.evening_reminder !== false ? "checked" : ""} />
+                  End of day reminder
+                </label>
+                <input type="time" id="eveningTime" value="${settings.reminders?.evening_time || "17:30"}" />
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group half">
+                <label class="checkbox-label">
+                  <input type="checkbox" id="tabThresholdReminder" ${settings.reminders?.tab_threshold_reminder !== false ? "checked" : ""} />
+                  Tab count threshold
+                </label>
+                <input type="number" id="tabThreshold" min="5" max="200" value="${settings.reminders?.tab_threshold || 30}" />
+                <span class="hint">Alert when tabs exceed this count</span>
+              </div>
+              <div class="form-group half">
+                <label class="checkbox-label">
+                  <input type="checkbox" id="intervalReminder" ${settings.reminders?.interval_reminder ? "checked" : ""} />
+                  Periodic check-in
+                </label>
+                <input type="number" id="intervalHours" min="1" max="12" value="${settings.reminders?.interval_hours || 2}" />
+                <span class="hint">Hours between reminders</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-section">
             <h2>Your Context & Goals</h2>
             <p class="section-desc">Tell the AI about your work, projects, and preferences. This helps it make better decisions about which tabs to keep or close.</p>
             <div class="form-group">

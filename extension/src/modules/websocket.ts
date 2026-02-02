@@ -226,6 +226,26 @@ export function connectWebSocket(): void {
           }
         }
       }
+    } else if (command.startsWith("restore_tab:")) {
+      // Restore a closed tab by opening its URL
+      // Format: restore_tab:{oldTabId}:{url}
+      const parts = command.replace("restore_tab:", "").split(":");
+      const oldTabId = parts[0];
+      // URL may contain colons, so join the rest
+      const url = parts.slice(1).join(":");
+      if (url) {
+        try {
+          const newTab = await chrome.tabs.create({ url, active: true });
+          if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(`restore_tab_done:${oldTabId}:${newTab.id}`);
+          }
+          console.log(`[Tabula] Restored tab: ${url} (new id: ${newTab.id})`);
+        } catch {
+          if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(`restore_tab_error:${oldTabId}`);
+          }
+        }
+      }
     }
   };
 

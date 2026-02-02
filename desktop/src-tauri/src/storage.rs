@@ -48,12 +48,82 @@ pub struct DailyReport {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RuleConfig {
+    pub enabled: bool,
+    pub inactive_days_threshold: u32,        // Days without activity to suggest close (default: 30)
+    pub min_active_seconds: u32,             // Minimum active time to consider "used" (default: 30)
+    pub duplicate_domain_threshold: u32,     // Max tabs per domain before suggesting merge (default: 5)
+    pub whitelist_domains: Vec<String>,      // Never suggest closing these domains
+    pub blacklist_domains: Vec<String>,      // Always suggest closing these domains
+}
+
+impl Default for RuleConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            inactive_days_threshold: 30,
+            min_active_seconds: 30,
+            duplicate_domain_threshold: 5,
+            whitelist_domains: vec![],
+            blacklist_domains: vec![],
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ReminderConfig {
+    pub enabled: bool,
+    pub lunch_reminder: bool,           // Remind before lunch (default: 11:30)
+    pub lunch_time: String,             // HH:MM format
+    pub evening_reminder: bool,         // Remind before end of day (default: 17:30)
+    pub evening_time: String,           // HH:MM format
+    pub tab_threshold_reminder: bool,   // Remind when tab count exceeds threshold
+    pub tab_threshold: u32,             // Number of tabs to trigger reminder
+    pub interval_reminder: bool,        // Periodic reminder
+    pub interval_hours: u32,            // Hours between reminders
+}
+
+impl Default for ReminderConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            lunch_reminder: true,
+            lunch_time: "11:30".to_string(),
+            evening_reminder: true,
+            evening_time: "17:30".to_string(),
+            tab_threshold_reminder: true,
+            tab_threshold: 30,
+            interval_reminder: false,
+            interval_hours: 2,
+        }
+    }
+}
+
+/// Record of a user's decision on a tab (for learning user preferences)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UserDecision {
+    pub tab_id: i64,
+    pub url: Option<String>,
+    pub domain: Option<String>,
+    pub title: Option<String>,
+    pub category: Option<String>,
+    pub ai_suggestion: Option<String>,     // What AI suggested (keep/close/unsure)
+    pub user_decision: String,              // What user decided (keep/close)
+    pub agreed_with_ai: bool,               // Did user agree with AI?
+    pub active_time_ms: i64,                // How long was tab active
+    pub tab_age_ms: i64,                    // How old was the tab
+    pub decided_at: i64,                    // Timestamp of decision
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Settings {
     pub openai_api_key: Option<String>,
     pub base_url: Option<String>,
     pub model: Option<String>,
     pub user_context: Option<String>, // User's work habits, goals, preferences
     pub analyze_batch_size: Option<u32>, // Number of tabs to analyze at once (default: 30)
+    pub rules: Option<RuleConfig>,    // Rule-based analysis configuration
+    pub reminders: Option<ReminderConfig>, // Smart reminder configuration
 }
 
 impl Default for Settings {
@@ -64,6 +134,8 @@ impl Default for Settings {
             model: Some("gpt-4o-mini".to_string()),
             user_context: None,
             analyze_batch_size: Some(30),
+            rules: Some(RuleConfig::default()),
+            reminders: Some(ReminderConfig::default()),
         }
     }
 }
@@ -72,6 +144,7 @@ pub struct Storage {
     pub tabs: HashMap<i64, TabRecord>,
     pub settings: Settings,
     pub report: Option<DailyReport>,
+    pub user_decisions: Vec<UserDecision>,  // History of user decisions for learning
     data_dir: PathBuf,
     screenshots_dir: PathBuf,
 }
@@ -93,6 +166,7 @@ impl Storage {
             tabs: HashMap::new(),
             settings: Settings::default(),
             report: None,
+            user_decisions: Vec::new(),
             data_dir,
             screenshots_dir,
         };
@@ -101,6 +175,7 @@ impl Storage {
         storage.load_tabs();
         storage.load_settings();
         storage.load_report();
+        storage.load_user_decisions();
 
         // Clean up old screenshots (migrate from timestamp-based to simple naming)
         storage.cleanup_old_screenshots();
@@ -170,6 +245,36 @@ impl Storage {
             })
             .cloned()
             .collect()
+    }
+
+    /// Get recently closed tabs (sorted by closed_at, most recent first)
+    /// limit: maximum number of tabs to return
+    pub fn get_recently_closed_tabs(&self, limit: usize) -> Vec<TabRecord> {
+        let mut closed_tabs: Vec<TabRecord> = self
+            .tabs
+            .values()
+            .filter(|t| t.closed_at.is_some() && t.url.is_some())
+            .cloned()
+            .collect();
+
+        // Sort by closed_at descending (most recent first)
+        closed_tabs.sort_by(|a, b| {
+            let a_time = a.closed_at.unwrap_or(0);
+            let b_time = b.closed_at.unwrap_or(0);
+            b_time.cmp(&a_time)
+        });
+
+        closed_tabs.truncate(limit);
+        closed_tabs
+    }
+
+    /// Restore a closed tab (mark it as open again)
+    /// This is called after the extension successfully opens the URL
+    pub fn mark_tab_restored(&mut self, tab_id: i64) {
+        if let Some(tab) = self.tabs.get_mut(&tab_id) {
+            tab.closed_at = None;
+            tab.is_active = false; // Will be updated when extension reports activation
+        }
     }
 
     pub fn close_tab(&mut self, tab_id: i64) {
@@ -366,4 +471,136 @@ impl Storage {
             }
         }
     }
+
+    fn user_decisions_path(&self) -> PathBuf {
+        self.data_dir.join("user_decisions.json")
+    }
+
+    pub fn save_user_decisions(&self) -> Result<(), Box<dyn std::error::Error>> {
+        let json = serde_json::to_string_pretty(&self.user_decisions)?;
+        fs::write(self.user_decisions_path(), json)?;
+        Ok(())
+    }
+
+    fn load_user_decisions(&mut self) {
+        if let Ok(data) = fs::read_to_string(self.user_decisions_path()) {
+            if let Ok(decisions) = serde_json::from_str(&data) {
+                self.user_decisions = decisions;
+            }
+        }
+    }
+
+    /// Record a user decision for learning preferences
+    pub fn record_user_decision(&mut self, tab_id: i64, user_decision: &str) {
+        if let Some(tab) = self.tabs.get(&tab_id) {
+            let ai_suggestion = tab.suggestion.as_ref().map(|s| s.decision.clone());
+            let category = tab.suggestion.as_ref().and_then(|s| s.category.clone());
+            let agreed = ai_suggestion.as_ref().map(|s| s == user_decision).unwrap_or(false);
+
+            let domain = tab.url.as_ref().and_then(|u| {
+                url::Url::parse(u).ok().map(|parsed| {
+                    parsed.host_str().unwrap_or("unknown").replace("www.", "")
+                })
+            });
+
+            let now = chrono::Utc::now().timestamp_millis();
+            let tab_age = now - tab.created_at;
+
+            let decision = UserDecision {
+                tab_id,
+                url: tab.url.clone(),
+                domain,
+                title: tab.title.clone(),
+                category,
+                ai_suggestion,
+                user_decision: user_decision.to_string(),
+                agreed_with_ai: agreed,
+                active_time_ms: tab.total_active_ms,
+                tab_age_ms: tab_age,
+                decided_at: now,
+            };
+
+            self.user_decisions.push(decision);
+
+            // Keep only last 1000 decisions to avoid unbounded growth
+            if self.user_decisions.len() > 1000 {
+                self.user_decisions = self.user_decisions.split_off(self.user_decisions.len() - 1000);
+            }
+        }
+    }
+
+    /// Get user decision patterns for AI prompt optimization
+    pub fn get_decision_patterns(&self) -> DecisionPatterns {
+        let mut patterns = DecisionPatterns::default();
+
+        if self.user_decisions.is_empty() {
+            return patterns;
+        }
+
+        // Calculate agreement rate
+        let total = self.user_decisions.len();
+        let agreed = self.user_decisions.iter().filter(|d| d.agreed_with_ai).count();
+        patterns.ai_agreement_rate = (agreed as f32 / total as f32) * 100.0;
+
+        // Find domains user tends to keep
+        let mut domain_keep_count: HashMap<String, u32> = HashMap::new();
+        let mut domain_close_count: HashMap<String, u32> = HashMap::new();
+
+        for d in &self.user_decisions {
+            if let Some(domain) = &d.domain {
+                if d.user_decision == "keep" {
+                    *domain_keep_count.entry(domain.clone()).or_insert(0) += 1;
+                } else {
+                    *domain_close_count.entry(domain.clone()).or_insert(0) += 1;
+                }
+            }
+        }
+
+        // Domains kept 3+ times more than closed
+        patterns.preferred_domains = domain_keep_count
+            .iter()
+            .filter(|(domain, keep_count)| {
+                let close_count = domain_close_count.get(*domain).unwrap_or(&0);
+                **keep_count >= 3 && **keep_count > *close_count * 2
+            })
+            .map(|(domain, _)| domain.clone())
+            .collect();
+
+        // Domains closed 3+ times more than kept
+        patterns.avoided_domains = domain_close_count
+            .iter()
+            .filter(|(domain, close_count)| {
+                let keep_count = domain_keep_count.get(*domain).unwrap_or(&0);
+                **close_count >= 3 && **close_count > *keep_count * 2
+            })
+            .map(|(domain, _)| domain.clone())
+            .collect();
+
+        // Calculate average active time for kept vs closed tabs
+        let kept_tabs: Vec<_> = self.user_decisions.iter().filter(|d| d.user_decision == "keep").collect();
+        let closed_tabs: Vec<_> = self.user_decisions.iter().filter(|d| d.user_decision == "close").collect();
+
+        if !kept_tabs.is_empty() {
+            patterns.avg_kept_active_time_ms = kept_tabs.iter().map(|d| d.active_time_ms).sum::<i64>() / kept_tabs.len() as i64;
+        }
+
+        if !closed_tabs.is_empty() {
+            patterns.avg_closed_active_time_ms = closed_tabs.iter().map(|d| d.active_time_ms).sum::<i64>() / closed_tabs.len() as i64;
+        }
+
+        patterns.total_decisions = total;
+
+        patterns
+    }
+}
+
+/// Patterns learned from user decisions
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct DecisionPatterns {
+    pub total_decisions: usize,
+    pub ai_agreement_rate: f32,
+    pub preferred_domains: Vec<String>,
+    pub avoided_domains: Vec<String>,
+    pub avg_kept_active_time_ms: i64,
+    pub avg_closed_active_time_ms: i64,
 }

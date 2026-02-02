@@ -5,15 +5,27 @@
 import { listen } from "@tauri-apps/api/event";
 import "./style.css";
 
-import type { ViewType, SortField, Settings, GroupMode } from "./types";
+import type { ViewType, SortField, Settings, GroupMode, RuleConfig, ReminderConfig } from "./types";
 import * as state from "./state";
 import * as api from "./api";
 import { renderSidebar } from "./components/Sidebar";
-import { renderTabsView } from "./views/TabsView";
+import { renderTabsView, setRecentlyClosedTabs } from "./views/TabsView";
+import {
+  renderOnboardingModal,
+  shouldShowOnboarding,
+  markOnboardingComplete,
+} from "./components/Onboarding";
 import { renderStatsView } from "./views/StatsView";
 import { renderHistoryView } from "./views/HistoryView";
 import { renderReportView } from "./views/ReportView";
 import { renderSettingsView } from "./views/SettingsView";
+
+// ─────────────────────────────────────────────────────────────
+// Onboarding State
+// ─────────────────────────────────────────────────────────────
+
+let showOnboarding = false;
+let onboardingStep = 0;
 
 // ─────────────────────────────────────────────────────────────
 // Rendering
@@ -51,9 +63,42 @@ function renderApp(): void {
         ${renderContent()}
       </main>
     </div>
+    ${showOnboarding ? renderOnboardingModal(onboardingStep) : ""}
   `;
 
   attachEventListeners();
+  if (showOnboarding) {
+    attachOnboardingListeners();
+  }
+}
+
+function attachOnboardingListeners(): void {
+  const nextBtn = document.getElementById("onboardingNextBtn");
+  const prevBtn = document.getElementById("onboardingPrevBtn");
+  const skipBtn = document.getElementById("onboardingSkipBtn");
+  const finishBtn = document.getElementById("onboardingFinishBtn");
+
+  nextBtn?.addEventListener("click", () => {
+    onboardingStep++;
+    renderApp();
+  });
+
+  prevBtn?.addEventListener("click", () => {
+    onboardingStep--;
+    renderApp();
+  });
+
+  skipBtn?.addEventListener("click", () => {
+    showOnboarding = false;
+    markOnboardingComplete();
+    renderApp();
+  });
+
+  finishBtn?.addEventListener("click", () => {
+    showOnboarding = false;
+    markOnboardingComplete();
+    renderApp();
+  });
 }
 
 function showStatus(message: string, isError = false): void {
@@ -156,9 +201,42 @@ function attachEventListeners(): void {
         return;
       }
 
-      // Tab actions (keep/close)
+      // Tab actions (keep/close/toggle-select)
       const action = btn.dataset.action;
       const tabIdStr = btn.dataset.tabId;
+      const tabIdsStr = btn.dataset.tabIds;
+
+      if (action === "toggle-select" && tabIdStr) {
+        e.stopPropagation();
+        const tabId = parseInt(tabIdStr);
+        state.toggleTabSelection(tabId);
+        renderApp();
+        return;
+      }
+
+      if (action === "select-group" && tabIdsStr) {
+        e.stopPropagation();
+        const tabIds = tabIdsStr.split(",").map((id) => parseInt(id));
+        state.selectAllTabs(tabIds);
+        renderApp();
+        return;
+      }
+
+      if (action === "close-group" && tabIdsStr) {
+        e.stopPropagation();
+        const tabIds = tabIdsStr.split(",").map((id) => parseInt(id));
+        if (!confirm(`Close all ${tabIds.length} tabs in this group?`)) return;
+
+        try {
+          const count = await api.closeTabsBatch(tabIds);
+          await loadTabs();
+          showStatus(`Closed ${count} tabs`);
+        } catch (err) {
+          showStatus(`Error: ${err}`, true);
+        }
+        return;
+      }
+
       if (action && tabIdStr) {
         e.stopPropagation();
         const tabId = parseInt(tabIdStr);
@@ -166,10 +244,65 @@ function attachEventListeners(): void {
         if (action === "close") {
           await api.closeTab(tabId);
           await loadTabs();
+          await loadRecentlyClosedTabs();
         } else if (action === "keep") {
           await api.markKeep(tabId);
           await loadTabs();
           showStatus("Tab marked as keep");
+        } else if (action === "restore-tab") {
+          try {
+            await api.restoreTab(tabId);
+            await loadTabs();
+            await loadRecentlyClosedTabs();
+            showStatus("Tab restored!");
+          } catch (err) {
+            showStatus(`Error: ${err}`, true);
+          }
+        } else if (action === "disagree") {
+          const currentDecision = btn.dataset.current;
+          if (currentDecision) {
+            try {
+              await api.markDisagree(tabId, currentDecision);
+              await loadTabs();
+              showStatus(`Suggestion updated to ${currentDecision === "keep" ? "close" : "keep"}`);
+            } catch (err) {
+              showStatus(`Error: ${err}`, true);
+            }
+          }
+        }
+        return;
+      }
+
+      // Analyze with rules button (quick, no AI)
+      if (btn.id === "analyzeRulesBtn") {
+        btn.setAttribute("disabled", "true");
+        btn.innerHTML = '<span class="spinner"></span> Analyzing...';
+        showStatus("Running rule-based analysis...");
+
+        try {
+          const [tabs, count] = await api.analyzeWithRules();
+          state.setTabs(tabs);
+          if (count > 0) {
+            showStatus(`Analyzed ${count} tabs with rules!`);
+          } else {
+            showStatus("No tabs matched the rules (try AI analysis)");
+          }
+          renderApp();
+        } catch (err) {
+          showStatus(`Error: ${err}`, true);
+        } finally {
+          const rulesBtn = document.getElementById("analyzeRulesBtn");
+          if (rulesBtn) {
+            rulesBtn.removeAttribute("disabled");
+            rulesBtn.innerHTML = `
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>
+                <rect x="9" y="3" width="6" height="4" rx="1"/>
+                <path d="M9 12l2 2 4-4"/>
+              </svg>
+              Quick Rules
+            `;
+          }
         }
         return;
       }
@@ -241,6 +374,75 @@ function attachEventListeners(): void {
         return;
       }
 
+      // Toggle selection mode button
+      if (btn.id === "toggleSelectionBtn") {
+        state.setSelectionMode(!state.selectionMode);
+        renderApp();
+        return;
+      }
+
+      // Confirm all suggestions button
+      if (btn.id === "confirmAllSuggestionsBtn") {
+        const closeSuggestedTabs = state.tabs.filter(
+          (t) => !t.closed_at && t.suggestion?.decision === "close"
+        );
+        if (closeSuggestedTabs.length === 0) return;
+
+        if (!confirm(`Confirm all suggestions? This will close ${closeSuggestedTabs.length} tabs marked for closing.`))
+          return;
+
+        try {
+          const count = await api.confirmAllSuggestions();
+          await loadTabs();
+          await loadRecentlyClosedTabs();
+          showStatus(`Confirmed: closed ${count} tabs`);
+        } catch (err) {
+          showStatus(`Error: ${err}`, true);
+        }
+        return;
+      }
+
+      // Select all visible tabs button
+      if (btn.id === "selectAllVisibleBtn") {
+        const openTabs = state.tabs.filter((t) => !t.closed_at);
+        state.selectAllTabs(openTabs.map((t) => t.id));
+        renderApp();
+        return;
+      }
+
+      // Deselect all tabs button
+      if (btn.id === "deselectAllBtn") {
+        state.deselectAllTabs();
+        renderApp();
+        return;
+      }
+
+      // Close selected tabs button
+      if (btn.id === "closeSelectedBtn") {
+        const selectedIds = state.getSelectedTabIds();
+        if (selectedIds.length === 0) return;
+
+        if (!confirm(`Close ${selectedIds.length} selected tab${selectedIds.length > 1 ? "s" : ""}?`))
+          return;
+
+        try {
+          const count = await api.closeTabsBatch(selectedIds);
+          state.deselectAllTabs();
+          await loadTabs();
+          showStatus(`Closed ${count} tabs`);
+        } catch (err) {
+          showStatus(`Error: ${err}`, true);
+        }
+        return;
+      }
+
+      // Cancel selection button
+      if (btn.id === "cancelSelectionBtn") {
+        state.deselectAllTabs();
+        renderApp();
+        return;
+      }
+
       // Refresh history button
       if (btn.id === "refreshHistoryBtn") {
         btn.setAttribute("disabled", "true");
@@ -299,12 +501,57 @@ function attachEventListeners(): void {
         const batchSizeStr = (document.getElementById("batchSize") as HTMLInputElement).value.trim();
         const batchSize = parseInt(batchSizeStr) || 30;
 
+        // Rule configuration
+        const rulesEnabled = (document.getElementById("rulesEnabled") as HTMLInputElement)?.checked ?? true;
+        const inactiveDays = parseInt((document.getElementById("inactiveDays") as HTMLInputElement)?.value) || 30;
+        const minActiveSeconds = parseInt((document.getElementById("minActiveSeconds") as HTMLInputElement)?.value) || 30;
+        const duplicateDomainThreshold = parseInt((document.getElementById("duplicateDomainThreshold") as HTMLInputElement)?.value) || 5;
+        const whitelistDomainsStr = (document.getElementById("whitelistDomains") as HTMLInputElement)?.value || "";
+        const blacklistDomainsStr = (document.getElementById("blacklistDomains") as HTMLInputElement)?.value || "";
+
+        const parseDomainsInput = (input: string): string[] =>
+          input.split(",").map((d) => d.trim()).filter((d) => d.length > 0);
+
+        const rules: RuleConfig = {
+          enabled: rulesEnabled,
+          inactive_days_threshold: Math.max(1, Math.min(365, inactiveDays)),
+          min_active_seconds: Math.max(1, Math.min(3600, minActiveSeconds)),
+          duplicate_domain_threshold: Math.max(2, Math.min(50, duplicateDomainThreshold)),
+          whitelist_domains: parseDomainsInput(whitelistDomainsStr),
+          blacklist_domains: parseDomainsInput(blacklistDomainsStr),
+        };
+
+        // Reminder configuration
+        const remindersEnabled = (document.getElementById("remindersEnabled") as HTMLInputElement)?.checked ?? true;
+        const lunchReminder = (document.getElementById("lunchReminder") as HTMLInputElement)?.checked ?? true;
+        const lunchTime = (document.getElementById("lunchTime") as HTMLInputElement)?.value || "11:30";
+        const eveningReminder = (document.getElementById("eveningReminder") as HTMLInputElement)?.checked ?? true;
+        const eveningTime = (document.getElementById("eveningTime") as HTMLInputElement)?.value || "17:30";
+        const tabThresholdReminder = (document.getElementById("tabThresholdReminder") as HTMLInputElement)?.checked ?? true;
+        const tabThreshold = parseInt((document.getElementById("tabThreshold") as HTMLInputElement)?.value) || 30;
+        const intervalReminder = (document.getElementById("intervalReminder") as HTMLInputElement)?.checked ?? false;
+        const intervalHours = parseInt((document.getElementById("intervalHours") as HTMLInputElement)?.value) || 2;
+
+        const reminders: ReminderConfig = {
+          enabled: remindersEnabled,
+          lunch_reminder: lunchReminder,
+          lunch_time: lunchTime,
+          evening_reminder: eveningReminder,
+          evening_time: eveningTime,
+          tab_threshold_reminder: tabThresholdReminder,
+          tab_threshold: Math.max(5, Math.min(200, tabThreshold)),
+          interval_reminder: intervalReminder,
+          interval_hours: Math.max(1, Math.min(12, intervalHours)),
+        };
+
         const newSettings: Settings = {
           openai_api_key: apiKey || undefined,
           base_url: baseUrl || undefined,
           model: model || undefined,
           user_context: userContext || undefined,
           analyze_batch_size: Math.max(1, Math.min(100, batchSize)),
+          rules,
+          reminders,
         };
 
         try {
@@ -383,6 +630,49 @@ function attachEventListeners(): void {
       { signal }
     );
   }
+
+  // Keyboard shortcuts
+  document.addEventListener(
+    "keydown",
+    (e) => {
+      // Only handle shortcuts in tabs view
+      if (state.currentView !== "tabs") return;
+
+      // Ctrl/Cmd + A: Select all tabs
+      if ((e.ctrlKey || e.metaKey) && e.key === "a") {
+        e.preventDefault();
+        const openTabs = state.tabs.filter((t) => !t.closed_at);
+        state.selectAllTabs(openTabs.map((t) => t.id));
+        renderApp();
+        return;
+      }
+
+      // Escape: Cancel selection
+      if (e.key === "Escape" && state.selectionMode) {
+        e.preventDefault();
+        state.deselectAllTabs();
+        renderApp();
+        return;
+      }
+
+      // Delete/Backspace: Close selected tabs (when in selection mode)
+      if ((e.key === "Delete" || e.key === "Backspace") && state.selectionMode && state.selectedTabs.size > 0) {
+        e.preventDefault();
+        const selectedIds = state.getSelectedTabIds();
+        if (confirm(`Close ${selectedIds.length} selected tab${selectedIds.length > 1 ? "s" : ""}?`)) {
+          api.closeTabsBatch(selectedIds).then((count) => {
+            state.deselectAllTabs();
+            loadTabs();
+            showStatus(`Closed ${count} tabs`);
+          }).catch((err) => {
+            showStatus(`Error: ${err}`, true);
+          });
+        }
+        return;
+      }
+    },
+    { signal }
+  );
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -406,6 +696,15 @@ async function loadClosedTabs(): Promise<void> {
     renderApp();
   } catch (err) {
     console.error("Failed to load closed tabs:", err);
+  }
+}
+
+async function loadRecentlyClosedTabs(): Promise<void> {
+  try {
+    const recentlyClosed = await api.getRecentlyClosedTabs(50);
+    setRecentlyClosedTabs(recentlyClosed);
+  } catch (err) {
+    console.error("Failed to load recently closed tabs:", err);
   }
 }
 
@@ -435,15 +734,63 @@ async function init(): Promise<void> {
   // Load theme from localStorage first (before any rendering)
   loadTheme();
 
-  await Promise.all([loadTabs(), loadClosedTabs(), loadSettings(), loadReport()]);
+  // Check if onboarding should be shown
+  showOnboarding = shouldShowOnboarding();
+
+  await Promise.all([
+    loadTabs(),
+    loadClosedTabs(),
+    loadSettings(),
+    loadReport(),
+    loadRecentlyClosedTabs(),
+  ]);
 
   await listen("tab-captured", () => {
     loadTabs();
+    loadRecentlyClosedTabs();
   });
 
   await listen("tab-event", () => {
     loadTabs();
+    loadRecentlyClosedTabs();
   });
+
+  // Listen for reminder notifications from the backend
+  await listen("reminder", (event) => {
+    const data = event.payload as { title: string; body: string };
+    showReminderNotification(data.title, data.body);
+  });
+}
+
+// Show in-app reminder notification
+function showReminderNotification(title: string, body: string): void {
+  // Create notification element
+  const notification = document.createElement("div");
+  notification.className = "reminder-notification";
+  notification.innerHTML = `
+    <div class="reminder-content">
+      <div class="reminder-title">${title}</div>
+      <div class="reminder-body">${body}</div>
+    </div>
+    <button class="reminder-dismiss">&times;</button>
+  `;
+
+  // Add click handler to dismiss
+  notification.querySelector(".reminder-dismiss")?.addEventListener("click", () => {
+    notification.classList.add("hiding");
+    setTimeout(() => notification.remove(), 300);
+  });
+
+  // Add to page
+  document.body.appendChild(notification);
+
+  // Auto-dismiss after 10 seconds
+  setTimeout(() => {
+    if (notification.parentNode) {
+      notification.classList.add("hiding");
+      setTimeout(() => notification.remove(), 300);
+    }
+  }, 10000);
 }
 
 init();

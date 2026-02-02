@@ -124,6 +124,8 @@ pub async fn start_server(
         .route("/sync", post(handle_sync))
         .route("/screenshot/:filename", get(serve_screenshot))
         .route("/ws", get(websocket_handler))
+        .route("/tab/:tab_id", get(get_tab_info))
+        .route("/stats", get(get_stats))
         .layer(cors)
         .with_state(state);
 
@@ -180,6 +182,82 @@ async fn handle_websocket(socket: WebSocket, state: ServerState) {
         _ = send_task => {},
         _ = recv_task => {},
     }
+}
+
+// Response for tab info query
+#[derive(Serialize)]
+struct TabInfoResponse {
+    found: bool,
+    suggestion: Option<String>,
+    reason: Option<String>,
+    category: Option<String>,
+}
+
+// Response for stats query
+#[derive(Serialize)]
+struct StatsResponse {
+    total_tabs: usize,
+    close_suggested: usize,
+    keep_suggested: usize,
+    unanalyzed: usize,
+}
+
+// Get info for a specific tab (used by extension popup)
+async fn get_tab_info(
+    State(state): State<ServerState>,
+    Path(tab_id): Path<i64>,
+) -> Json<TabInfoResponse> {
+    let storage = state.storage.read().await;
+
+    if let Some(tab) = storage.tabs.get(&tab_id) {
+        if let Some(suggestion) = &tab.suggestion {
+            Json(TabInfoResponse {
+                found: true,
+                suggestion: Some(suggestion.decision.clone()),
+                reason: Some(suggestion.reason.clone()),
+                category: suggestion.category.clone(),
+            })
+        } else {
+            Json(TabInfoResponse {
+                found: true,
+                suggestion: None,
+                reason: None,
+                category: None,
+            })
+        }
+    } else {
+        Json(TabInfoResponse {
+            found: false,
+            suggestion: None,
+            reason: None,
+            category: None,
+        })
+    }
+}
+
+// Get overall stats (used by extension popup)
+async fn get_stats(State(state): State<ServerState>) -> Json<StatsResponse> {
+    let storage = state.storage.read().await;
+
+    let open_tabs: Vec<_> = storage.tabs.values().filter(|t| t.closed_at.is_none()).collect();
+
+    let total_tabs = open_tabs.len();
+    let close_suggested = open_tabs
+        .iter()
+        .filter(|t| t.suggestion.as_ref().map(|s| s.decision == "close").unwrap_or(false))
+        .count();
+    let keep_suggested = open_tabs
+        .iter()
+        .filter(|t| t.suggestion.as_ref().map(|s| s.decision == "keep").unwrap_or(false))
+        .count();
+    let unanalyzed = open_tabs.iter().filter(|t| t.suggestion.is_none()).count();
+
+    Json(StatsResponse {
+        total_tabs,
+        close_suggested,
+        keep_suggested,
+        unanalyzed,
+    })
 }
 
 async fn health_check() -> Json<HealthResponse> {

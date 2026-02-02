@@ -31,12 +31,20 @@ export async function analyzeBatch(
   return invoke("analyze_batch", { limit });
 }
 
+export async function analyzeWithRules(): Promise<[TabRecord[], number]> {
+  return invoke("analyze_with_rules");
+}
+
 export async function generateReport(): Promise<DailyReport> {
   return invoke("generate_report");
 }
 
 export async function closeTab(tabId: number): Promise<void> {
   return invoke("close_tab", { tabId });
+}
+
+export async function closeTabsBatch(tabIds: number[]): Promise<number> {
+  return invoke("close_tabs_batch", { tabIds });
 }
 
 export async function markKeep(tabId: number): Promise<void> {
@@ -65,4 +73,38 @@ export async function getStorageStats(): Promise<[number, number, number]> {
 
 export async function syncTabs(chromeTabIds: number[]): Promise<number> {
   return invoke("sync_tabs", { chromeTabIds });
+}
+
+export async function getRecentlyClosedTabs(
+  limit?: number
+): Promise<TabRecord[]> {
+  return invoke("get_recently_closed_tabs", { limit });
+}
+
+export async function restoreTab(tabId: number): Promise<void> {
+  return invoke("restore_tab", { tabId });
+}
+
+export interface DecisionPatterns {
+  total_decisions: number;
+  ai_agreement_rate: number;
+  preferred_domains: string[];
+  avoided_domains: string[];
+  avg_kept_active_time_ms: number;
+  avg_closed_active_time_ms: number;
+}
+
+export async function getDecisionPatterns(): Promise<DecisionPatterns> {
+  return invoke("get_decision_patterns");
+}
+
+export async function markDisagree(
+  tabId: number,
+  currentDecision: string
+): Promise<void> {
+  return invoke("mark_disagree", { tabId, currentDecision });
+}
+
+export async function confirmAllSuggestions(): Promise<number> {
+  return invoke("confirm_all_suggestions");
 }
