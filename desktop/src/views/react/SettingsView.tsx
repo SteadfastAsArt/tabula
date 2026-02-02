@@ -3,7 +3,8 @@
  */
 
 import React, { useState, useCallback } from "react";
-import type { Settings, RuleConfig, ReminderConfig } from "../../types";
+import type { Settings, RuleConfig, ReminderConfig, AiProvider } from "../../types";
+import { AI_PROVIDER_PRESETS } from "../../types";
 import * as api from "../../api";
 
 interface SettingsViewProps {
@@ -25,11 +26,22 @@ export function SettingsView({
   const [isCleaningUp, setIsCleaningUp] = useState(false);
 
   // Form state
+  const [aiProvider, setAiProvider] = useState<AiProvider>(settings.ai_provider || "openai");
   const [apiKey, setApiKey] = useState(settings.openai_api_key || "");
   const [baseUrl, setBaseUrl] = useState(settings.base_url || "");
   const [model, setModel] = useState(settings.model || "");
   const [userContext, setUserContext] = useState(settings.user_context || "");
   const [batchSize, setBatchSize] = useState(settings.analyze_batch_size || 30);
+
+  // Update base_url and model when provider changes
+  const handleProviderChange = useCallback((provider: AiProvider) => {
+    setAiProvider(provider);
+    if (provider !== "custom") {
+      const preset = AI_PROVIDER_PRESETS[provider];
+      setBaseUrl(preset.base_url);
+      setModel(preset.default_model);
+    }
+  }, []);
 
   // Rules state
   const [rulesEnabled, setRulesEnabled] = useState(settings.rules?.enabled !== false);
@@ -62,6 +74,10 @@ export function SettingsView({
   );
   const [intervalHours, setIntervalHours] = useState(settings.reminders?.interval_hours || 2);
   const [autoReport, setAutoReport] = useState(settings.reminders?.auto_report !== false);
+
+  // Notion state
+  const [notionApiKey, setNotionApiKey] = useState(settings.notion_api_key || "");
+  const [notionDatabaseId, setNotionDatabaseId] = useState(settings.notion_database_id || "");
 
   const parseDomainsInput = (input: string): string[] =>
     input
@@ -98,10 +114,13 @@ export function SettingsView({
         openai_api_key: apiKey || undefined,
         base_url: baseUrl || undefined,
         model: model || undefined,
+        ai_provider: aiProvider,
         user_context: userContext || undefined,
         analyze_batch_size: Math.max(1, Math.min(100, batchSize)),
         rules,
         reminders,
+        notion_api_key: notionApiKey || undefined,
+        notion_database_id: notionDatabaseId || undefined,
       };
 
       await onSaveSettings(newSettings);
@@ -112,6 +131,7 @@ export function SettingsView({
       setIsSaving(false);
     }
   }, [
+    aiProvider,
     apiKey,
     baseUrl,
     model,
@@ -133,6 +153,8 @@ export function SettingsView({
     intervalReminder,
     intervalHours,
     autoReport,
+    notionApiKey,
+    notionDatabaseId,
     onSaveSettings,
     showStatus,
   ]);
@@ -228,15 +250,38 @@ export function SettingsView({
           <div className="settings-section">
             <h2>AI Configuration</h2>
             <div className="form-group">
-              <label htmlFor="apiKey">OpenAI API Key</label>
-              <input
-                type="password"
-                id="apiKey"
-                placeholder="sk-..."
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-              />
+              <label>AI Provider</label>
+              <div className="provider-buttons">
+                {(Object.keys(AI_PROVIDER_PRESETS) as AiProvider[]).map((provider) => (
+                  <button
+                    key={provider}
+                    type="button"
+                    className={`btn-provider ${aiProvider === provider ? "active" : ""}`}
+                    onClick={() => handleProviderChange(provider)}
+                  >
+                    {AI_PROVIDER_PRESETS[provider].name}
+                  </button>
+                ))}
+              </div>
+              <span className="hint">
+                {aiProvider === "ollama" && "Make sure Ollama is running on localhost:11434"}
+                {aiProvider === "lmstudio" && "Make sure LM Studio server is running on localhost:1234"}
+                {aiProvider === "openai" && "Requires an OpenAI API key"}
+                {aiProvider === "custom" && "Configure your own API endpoint below"}
+              </span>
             </div>
+            {AI_PROVIDER_PRESETS[aiProvider].needs_api_key && (
+              <div className="form-group">
+                <label htmlFor="apiKey">API Key</label>
+                <input
+                  type="password"
+                  id="apiKey"
+                  placeholder={aiProvider === "openai" ? "sk-..." : "API key (if required)"}
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                />
+              </div>
+            )}
             <div className="form-group">
               <label htmlFor="baseUrl">Base URL</label>
               <input
@@ -245,20 +290,28 @@ export function SettingsView({
                 placeholder="https://api.openai.com/v1"
                 value={baseUrl}
                 onChange={(e) => setBaseUrl(e.target.value)}
+                disabled={aiProvider !== "custom"}
               />
-              <span className="hint">
-                Leave empty for default OpenAI endpoint, or use your own proxy
-              </span>
+              {aiProvider === "custom" && (
+                <span className="hint">
+                  Must be OpenAI-compatible API endpoint (e.g., /v1/chat/completions)
+                </span>
+              )}
             </div>
             <div className="form-group">
               <label htmlFor="model">Model</label>
               <input
                 type="text"
                 id="model"
-                placeholder="gpt-4o-mini"
+                placeholder={AI_PROVIDER_PRESETS[aiProvider].default_model || "model name"}
                 value={model}
                 onChange={(e) => setModel(e.target.value)}
               />
+              <span className="hint">
+                {aiProvider === "ollama" && "e.g., llama3.2, mistral, codellama"}
+                {aiProvider === "lmstudio" && "Use the model name from LM Studio"}
+                {aiProvider === "openai" && "e.g., gpt-4o-mini, gpt-4o, gpt-3.5-turbo"}
+              </span>
             </div>
             <div className="form-group">
               <label htmlFor="batchSize">Analyze Batch Size</label>
@@ -452,6 +505,46 @@ export function SettingsView({
               </label>
               <span className="hint">
                 Automatically generate your daily browsing summary at the evening time set above
+              </span>
+            </div>
+          </div>
+
+          {/* Notion Integration */}
+          <div className="settings-section">
+            <h2>Notion Integration</h2>
+            <p className="section-desc">
+              Export your daily reports to a Notion database. Create an internal integration at{" "}
+              <a href="https://www.notion.so/my-integrations" target="_blank" rel="noopener noreferrer">
+                notion.so/my-integrations
+              </a>{" "}
+              and share a database with it.
+            </p>
+            <div className="form-group">
+              <label htmlFor="notionApiKey">Notion Integration Secret</label>
+              <input
+                type="password"
+                id="notionApiKey"
+                placeholder="secret_..."
+                value={notionApiKey}
+                onChange={(e) => setNotionApiKey(e.target.value)}
+              />
+              <span className="hint">
+                Found in your integration settings under "Internal Integration Token"
+              </span>
+            </div>
+            <div className="form-group">
+              <label htmlFor="notionDatabaseId">Database ID</label>
+              <input
+                type="text"
+                id="notionDatabaseId"
+                placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                value={notionDatabaseId}
+                onChange={(e) => setNotionDatabaseId(e.target.value)}
+              />
+              <span className="hint">
+                Copy from the database URL: notion.so/[workspace]/[database_id]?v=...
+                <br />
+                Database must have "Name" (title) and "Date" (date) properties.
               </span>
             </div>
           </div>

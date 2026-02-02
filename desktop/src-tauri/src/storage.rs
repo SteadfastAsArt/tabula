@@ -205,15 +205,36 @@ pub struct UserDecision {
     pub decided_at: i64,                    // Timestamp of decision
 }
 
+/// AI provider preset for quick configuration
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum AiProvider {
+    OpenAI,
+    Ollama,
+    LmStudio,
+    Custom,
+}
+
+impl Default for AiProvider {
+    fn default() -> Self {
+        AiProvider::OpenAI
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Settings {
     pub openai_api_key: Option<String>,
     pub base_url: Option<String>,
     pub model: Option<String>,
+    #[serde(default)]
+    pub ai_provider: AiProvider, // Quick provider selection
     pub user_context: Option<String>, // User's work habits, goals, preferences
     pub analyze_batch_size: Option<u32>, // Number of tabs to analyze at once (default: 30)
     pub rules: Option<RuleConfig>,    // Rule-based analysis configuration
     pub reminders: Option<ReminderConfig>, // Smart reminder configuration
+    // Notion integration
+    pub notion_api_key: Option<String>,    // Notion integration secret
+    pub notion_database_id: Option<String>, // Database ID for reports
 }
 
 impl Default for Settings {
@@ -222,10 +243,13 @@ impl Default for Settings {
             openai_api_key: None,
             base_url: Some("https://api.openai.com/v1".to_string()),
             model: Some("gpt-4o-mini".to_string()),
+            ai_provider: AiProvider::OpenAI,
             user_context: None,
             analyze_batch_size: Some(30),
             rules: Some(RuleConfig::default()),
             reminders: Some(ReminderConfig::default()),
+            notion_api_key: None,
+            notion_database_id: None,
         }
     }
 }

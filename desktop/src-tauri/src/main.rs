@@ -2,6 +2,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod ai;
+mod notion;
 mod reminder;
 mod report;
 mod rules;
@@ -84,6 +85,7 @@ fn main() {
             get_decision_patterns,
             mark_disagree,
             confirm_all_suggestions,
+            export_to_notion,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -521,4 +523,20 @@ async fn restore_tab(
     storage.save_tabs().map_err(|e| e.to_string())?;
 
     Ok(())
+}
+
+/// Export the current report to Notion
+#[tauri::command]
+async fn export_to_notion(state: tauri::State<'_, AppState>) -> Result<String, String> {
+    let storage = state.read().await;
+
+    let report = storage
+        .report
+        .clone()
+        .ok_or("No report to export. Generate a report first.")?;
+
+    let settings = storage.settings.clone();
+    drop(storage);
+
+    notion::export_report_to_notion(&report, &settings).await
 }

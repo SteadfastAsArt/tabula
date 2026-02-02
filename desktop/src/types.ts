@@ -70,15 +70,49 @@ export interface ReminderConfig {
   auto_report: boolean;         // Auto-generate daily report at evening time
 }
 
+export type AiProvider = "openai" | "ollama" | "lmstudio" | "custom";
+
 export interface Settings {
   openai_api_key?: string;
   base_url?: string;
   model?: string;
+  ai_provider?: AiProvider;
   user_context?: string;
   analyze_batch_size?: number;
   rules?: RuleConfig;
   reminders?: ReminderConfig;
+  // Notion integration
+  notion_api_key?: string;
+  notion_database_id?: string;
 }
+
+// AI provider preset configurations
+export const AI_PROVIDER_PRESETS: Record<AiProvider, { name: string; base_url: string; default_model: string; needs_api_key: boolean }> = {
+  openai: {
+    name: "OpenAI",
+    base_url: "https://api.openai.com/v1",
+    default_model: "gpt-4o-mini",
+    needs_api_key: true,
+  },
+  ollama: {
+    name: "Ollama (Local)",
+    base_url: "http://localhost:11434/v1",
+    default_model: "llama3.2",
+    needs_api_key: false,
+  },
+  lmstudio: {
+    name: "LM Studio (Local)",
+    base_url: "http://localhost:1234/v1",
+    default_model: "local-model",
+    needs_api_key: false,
+  },
+  custom: {
+    name: "Custom",
+    base_url: "",
+    default_model: "",
+    needs_api_key: true,
+  },
+};
 
 export interface CategoryTimeData {
   category: string;

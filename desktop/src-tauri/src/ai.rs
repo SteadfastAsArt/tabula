@@ -12,6 +12,16 @@ const DEFAULT_BASE_URL: &str = "https://api.openai.com/v1";
 const MAX_RETRIES: u32 = 3;
 const INITIAL_RETRY_DELAY_MS: u64 = 1000;
 
+// Local AI provider endpoints (no API key required)
+const OLLAMA_BASE_URL: &str = "http://localhost:11434/v1";
+const LM_STUDIO_BASE_URL: &str = "http://localhost:1234/v1";
+
+/// Check if the base URL is a local AI endpoint that doesn't require an API key
+fn is_local_ai_endpoint(base_url: &str) -> bool {
+    let url_lower = base_url.to_lowercase();
+    url_lower.contains("localhost") || url_lower.contains("127.0.0.1") || url_lower.contains("0.0.0.0")
+}
+
 fn is_retryable_error(status: StatusCode) -> bool {
     matches!(status.as_u16(), 429 | 500 | 502 | 503 | 504)
 }
@@ -54,7 +64,16 @@ struct SuggestionItem {
     digest: Option<String>,
 }
 
-fn get_api_key(settings: &Settings) -> Result<String, String> {
+fn get_api_key(settings: &Settings, base_url: &str) -> Result<String, String> {
+    // For local AI endpoints, API key is optional (use placeholder if not set)
+    if is_local_ai_endpoint(base_url) {
+        return Ok(settings
+            .openai_api_key
+            .clone()
+            .filter(|k| !k.is_empty())
+            .unwrap_or_else(|| "local".to_string()));
+    }
+
     settings
         .openai_api_key
         .clone()
@@ -83,8 +102,8 @@ async fn call_openai(
     messages: Vec<ChatMessage>,
     temperature: f32,
 ) -> Result<String, String> {
-    let api_key = get_api_key(settings)?;
     let base_url = get_base_url(settings);
+    let api_key = get_api_key(settings, &base_url)?;
     let model = get_model(settings);
 
     // Log request details

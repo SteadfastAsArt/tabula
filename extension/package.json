@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "build": "node build.mjs",
+    "build:chrome": "node build.mjs --chrome",
+    "build:firefox": "node build.mjs --firefox",
     "watch": "node build.mjs --watch"
   },
   "devDependencies": {

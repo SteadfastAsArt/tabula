@@ -13,6 +13,7 @@ import type {
   ActionItem,
 } from "../../types";
 import { formatReportContent, formatDuration } from "../../utils";
+import * as api from "../../api";
 
 interface ReportViewProps {
   report: DailyReport | null;
@@ -247,6 +248,7 @@ export function ReportView({
   showStatus,
 }: ReportViewProps): React.ReactElement {
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   const handleGenerate = useCallback(async () => {
     setIsGenerating(true);
@@ -260,6 +262,21 @@ export function ReportView({
       setIsGenerating(false);
     }
   }, [onGenerateReport, showStatus]);
+
+  const handleExportToNotion = useCallback(async () => {
+    setIsExporting(true);
+    showStatus("Exporting to Notion...");
+    try {
+      const url = await api.exportToNotion();
+      showStatus("Exported to Notion!");
+      // Open the Notion page in browser
+      window.open(url, "_blank");
+    } catch (err) {
+      showStatus(`Error: ${err}`, true);
+    } finally {
+      setIsExporting(false);
+    }
+  }, [showStatus]);
 
   return (
     <div className="view-wrapper">
@@ -297,6 +314,36 @@ export function ReportView({
               </>
             )}
           </button>
+          {report && (
+            <button
+              className="btn secondary"
+              onClick={handleExportToNotion}
+              disabled={isExporting}
+            >
+              {isExporting ? (
+                <>
+                  <span className="spinner" />
+                  Exporting...
+                </>
+              ) : (
+                <>
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+                    <polyline points="16 6 12 2 8 6" />
+                    <line x1="12" y1="2" x2="12" y2="15" />
+                  </svg>
+                  Export to Notion
+                </>
+              )}
+            </button>
+          )}
         </div>
       </header>
       <div id="statusMessage" className="status-message" />

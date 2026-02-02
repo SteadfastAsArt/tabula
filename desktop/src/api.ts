@@ -108,3 +108,7 @@ export async function markDisagree(
 export async function confirmAllSuggestions(): Promise<number> {
   return invoke("confirm_all_suggestions");
 }
+
+export async function exportToNotion(): Promise<string> {
+  return invoke("export_to_notion");
+}
