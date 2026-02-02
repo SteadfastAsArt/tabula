@@ -5,6 +5,7 @@
  * - Time-based: Before lunch, before end of day
  * - Threshold-based: When tab count exceeds limit
  * - Interval-based: Periodic reminders
+ * - Auto report generation at end of day
  */
 
 use chrono::{Local, NaiveTime, Timelike};
@@ -13,6 +14,8 @@ use tauri::{AppHandle, Emitter};
 use tauri_plugin_notification::NotificationExt;
 use tokio::time::{interval, Duration};
 
+use crate::ai;
+use crate::report;
 use crate::storage::ReminderConfig;
 use crate::AppState;
 
@@ -21,6 +24,7 @@ static LAST_LUNCH_REMINDER: AtomicU64 = AtomicU64::new(0);
 static LAST_EVENING_REMINDER: AtomicU64 = AtomicU64::new(0);
 static LAST_THRESHOLD_REMINDER: AtomicU64 = AtomicU64::new(0);
 static LAST_INTERVAL_REMINDER: AtomicU64 = AtomicU64::new(0);
+static LAST_AUTO_REPORT: AtomicU64 = AtomicU64::new(0);
 
 // Minimum time between same type of reminders (in seconds)
 const REMINDER_COOLDOWN_SECS: u64 = 3600; // 1 hour
@@ -154,6 +158,71 @@ async fn check_interval_reminder(app_handle: &AppHandle, config: &ReminderConfig
     }
 }
 
+/// Auto-generate daily report at evening time
+async fn check_auto_report(app_handle: &AppHandle, config: &ReminderConfig, storage: &AppState) {
+    if !config.auto_report {
+        return;
+    }
+
+    let now = Local::now();
+    let current_time = now.time();
+
+    // Generate report at evening time
+    if let Some(evening_time) = parse_time(&config.evening_time) {
+        let minutes_since = (current_time.hour() * 60 + current_time.minute()) as i32
+            - (evening_time.hour() * 60 + evening_time.minute()) as i32;
+
+        // Generate report within 10 minutes after evening time
+        if minutes_since >= 0 && minutes_since <= 10 && should_remind(&LAST_AUTO_REPORT) {
+            mark_reminded(&LAST_AUTO_REPORT);
+
+            // Generate the report
+            let storage_guard = storage.read().await;
+            let tabs = storage_guard.get_today_tabs();
+            let settings = storage_guard.settings.clone();
+            drop(storage_guard);
+
+            // Try to generate AI content
+            let ai_content = match ai::generate_daily_report(&tabs, &settings).await {
+                Ok(content) => content,
+                Err(e) => {
+                    eprintln!("[AutoReport] AI generation failed: {}, using fallback", e);
+                    format!(
+                        "# Daily Summary\n\n\
+                         Today you worked with {} tabs.\n\n\
+                         *Note: AI summary generation failed. Please check your API key settings.*",
+                        tabs.len()
+                    )
+                }
+            };
+
+            // Generate enhanced report with visualization data
+            let storage_guard = storage.read().await;
+            let report = report::generate_enhanced_report(&storage_guard, ai_content);
+            drop(storage_guard);
+
+            // Save report
+            let mut storage_guard = storage.write().await;
+            storage_guard.report = Some(report);
+            if let Err(e) = storage_guard.save_report() {
+                eprintln!("[AutoReport] Failed to save report: {}", e);
+            }
+            drop(storage_guard);
+
+            // Send notification
+            send_notification(
+                app_handle,
+                "Daily Report Ready",
+                "Your daily browsing summary has been generated. Check the Report tab to view it!",
+            )
+            .await;
+
+            // Emit event to frontend
+            let _ = app_handle.emit("report_generated", ());
+        }
+    }
+}
+
 /// Start the reminder background task
 pub fn start_reminder_service(storage: AppState, app_handle: AppHandle) {
     tauri::async_runtime::spawn(async move {
@@ -197,6 +266,9 @@ pub fn start_reminder_service(storage: AppState, app_handle: AppHandle) {
             check_time_reminders(&app_handle, &config, open_tab_count).await;
             check_threshold_reminder(&app_handle, &config, open_tab_count).await;
             check_interval_reminder(&app_handle, &config, open_tab_count, close_suggested).await;
+
+            // Check auto report generation
+            check_auto_report(&app_handle, &config, &storage).await;
         }
     });
 }

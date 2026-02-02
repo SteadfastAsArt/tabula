@@ -67,6 +67,7 @@ export interface ReminderConfig {
   tab_threshold: number;
   interval_reminder: boolean;
   interval_hours: number;
+  auto_report: boolean;         // Auto-generate daily report at evening time
 }
 
 export interface Settings {
@@ -79,10 +80,51 @@ export interface Settings {
   reminders?: ReminderConfig;
 }
 
+export interface CategoryTimeData {
+  category: string;
+  time_ms: number;
+  tab_count: number;
+}
+
+export interface HourlyActivity {
+  hour: number;        // 0-23
+  time_ms: number;
+  tab_switches: number;
+}
+
+export interface DomainTimeData {
+  domain: string;
+  time_ms: number;
+  tab_count: number;
+}
+
+export interface TrendData {
+  total_time_today: number;
+  total_time_yesterday: number;
+  tabs_opened_today: number;
+  tabs_opened_yesterday: number;
+  tabs_closed_today: number;
+  tabs_closed_yesterday: number;
+  top_category_today?: string;
+  top_category_yesterday?: string;
+}
+
+export interface ActionItem {
+  priority: string;      // high, medium, low
+  action: string;
+  reason: string;
+  related_tabs: number[];
+}
+
 export interface DailyReport {
   date: string;
   content: string;
   generated_at: number;
+  category_time?: CategoryTimeData[];
+  hourly_activity?: HourlyActivity[];
+  domain_time?: DomainTimeData[];
+  trends?: TrendData;
+  action_items?: ActionItem[];
 }
 
 export type SortField =

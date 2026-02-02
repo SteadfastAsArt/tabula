@@ -61,6 +61,7 @@ export function SettingsView({
     settings.reminders?.interval_reminder || false
   );
   const [intervalHours, setIntervalHours] = useState(settings.reminders?.interval_hours || 2);
+  const [autoReport, setAutoReport] = useState(settings.reminders?.auto_report !== false);
 
   const parseDomainsInput = (input: string): string[] =>
     input
@@ -90,6 +91,7 @@ export function SettingsView({
         tab_threshold: Math.max(5, Math.min(200, tabThreshold)),
         interval_reminder: intervalReminder,
         interval_hours: Math.max(1, Math.min(12, intervalHours)),
+        auto_report: autoReport,
       };
 
       const newSettings: Settings = {
@@ -130,6 +132,7 @@ export function SettingsView({
     tabThreshold,
     intervalReminder,
     intervalHours,
+    autoReport,
     onSaveSettings,
     showStatus,
   ]);
@@ -437,6 +440,19 @@ export function SettingsView({
                 />
                 <span className="hint">Hours between reminders</span>
               </div>
+            </div>
+            <div className="form-group">
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={autoReport}
+                  onChange={(e) => setAutoReport(e.target.checked)}
+                />
+                Auto-generate daily report at end of day
+              </label>
+              <span className="hint">
+                Automatically generate your daily browsing summary at the evening time set above
+              </span>
             </div>
           </div>
 

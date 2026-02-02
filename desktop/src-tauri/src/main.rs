@@ -3,6 +3,7 @@
 
 mod ai;
 mod reminder;
+mod report;
 mod rules;
 mod server;
 mod storage;
@@ -230,16 +231,17 @@ async fn generate_report(
     let settings = storage.settings.clone();
     drop(storage);
 
-    let content = ai::generate_daily_report(&tabs, &settings)
+    // Generate AI content for the report
+    let ai_content = ai::generate_daily_report(&tabs, &settings)
         .await
         .map_err(|e| e.to_string())?;
 
-    let report = storage::DailyReport {
-        date: chrono::Local::now().format("%Y-%m-%d").to_string(),
-        content,
-        generated_at: chrono::Utc::now().timestamp_millis(),
-    };
+    // Generate enhanced report with visualization data
+    let storage = state.read().await;
+    let report = report::generate_enhanced_report(&storage, ai_content);
+    drop(storage);
 
+    // Save report
     let mut storage = state.write().await;
     storage.report = Some(report.clone());
     storage.save_report().map_err(|e| e.to_string())?;

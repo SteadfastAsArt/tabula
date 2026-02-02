@@ -532,6 +532,8 @@ function attachEventListeners(): void {
         const intervalReminder = (document.getElementById("intervalReminder") as HTMLInputElement)?.checked ?? false;
         const intervalHours = parseInt((document.getElementById("intervalHours") as HTMLInputElement)?.value) || 2;
 
+        const autoReport = (document.getElementById("autoReport") as HTMLInputElement)?.checked ?? true;
+
         const reminders: ReminderConfig = {
           enabled: remindersEnabled,
           lunch_reminder: lunchReminder,
@@ -542,6 +544,7 @@ function attachEventListeners(): void {
           tab_threshold: Math.max(5, Math.min(200, tabThreshold)),
           interval_reminder: intervalReminder,
           interval_hours: Math.max(1, Math.min(12, intervalHours)),
+          auto_report: autoReport,
         };
 
         const newSettings: Settings = {

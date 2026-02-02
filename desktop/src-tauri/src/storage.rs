@@ -62,11 +62,72 @@ pub struct TabRecord {
     pub url_history: Vec<UrlHistoryEntry>,
 }
 
+/// Time spent on a category for visualization
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CategoryTimeData {
+    pub category: String,
+    pub time_ms: i64,
+    pub tab_count: u32,
+}
+
+/// Hourly activity for heatmap
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HourlyActivity {
+    pub hour: u8,          // 0-23
+    pub time_ms: i64,      // Total active time in this hour
+    pub tab_switches: u32, // Number of tab switches
+}
+
+/// Domain time breakdown
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DomainTimeData {
+    pub domain: String,
+    pub time_ms: i64,
+    pub tab_count: u32,
+}
+
+/// Trend comparison with previous day
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TrendData {
+    pub total_time_today: i64,
+    pub total_time_yesterday: i64,
+    pub tabs_opened_today: u32,
+    pub tabs_opened_yesterday: u32,
+    pub tabs_closed_today: u32,
+    pub tabs_closed_yesterday: u32,
+    pub top_category_today: Option<String>,
+    pub top_category_yesterday: Option<String>,
+}
+
+/// Action item suggestion
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ActionItem {
+    pub priority: String,      // high, medium, low
+    pub action: String,        // The suggested action
+    pub reason: String,        // Why this is suggested
+    pub related_tabs: Vec<i64>, // Tab IDs related to this action
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DailyReport {
     pub date: String,
     pub content: String,
     pub generated_at: i64,
+    /// Time distribution by category
+    #[serde(default)]
+    pub category_time: Vec<CategoryTimeData>,
+    /// Hourly activity heatmap data
+    #[serde(default)]
+    pub hourly_activity: Vec<HourlyActivity>,
+    /// Top domains by time spent
+    #[serde(default)]
+    pub domain_time: Vec<DomainTimeData>,
+    /// Comparison with previous day
+    #[serde(default)]
+    pub trends: Option<TrendData>,
+    /// Suggested actions
+    #[serde(default)]
+    pub action_items: Vec<ActionItem>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -103,6 +164,12 @@ pub struct ReminderConfig {
     pub tab_threshold: u32,             // Number of tabs to trigger reminder
     pub interval_reminder: bool,        // Periodic reminder
     pub interval_hours: u32,            // Hours between reminders
+    #[serde(default = "default_true")]
+    pub auto_report: bool,              // Auto-generate daily report at evening time
+}
+
+fn default_true() -> bool {
+    true
 }
 
 impl Default for ReminderConfig {
@@ -117,6 +184,7 @@ impl Default for ReminderConfig {
             tab_threshold: 30,
             interval_reminder: false,
             interval_hours: 2,
+            auto_report: true,
         }
     }
 }
