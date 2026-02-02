@@ -2,6 +2,18 @@
  * Tabula Desktop - Type Definitions
  */
 
+export interface ActiveSession {
+  started_at: number;
+  ended_at?: number;
+  duration_ms: number;
+}
+
+export interface UrlHistoryEntry {
+  url: string;
+  title?: string;
+  visited_at: number;
+}
+
 export interface TabSnapshot {
   screenshot_path?: string;
   captured_at: number;
@@ -30,6 +42,10 @@ export interface TabRecord {
   description?: string;
   snapshot?: TabSnapshot;
   suggestion?: TabSuggestion;
+  /** Session history - each time the tab was actively viewed */
+  sessions?: ActiveSession[];
+  /** URL history - URLs visited in this tab */
+  url_history?: UrlHistoryEntry[];
 }
 
 export interface RuleConfig {

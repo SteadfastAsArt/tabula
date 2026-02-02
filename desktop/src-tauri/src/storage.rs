@@ -7,6 +7,22 @@ use std::io::Write;
 use std::path::PathBuf;
 use tauri::{AppHandle, Manager};
 
+/// A single viewing session for a tab
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ActiveSession {
+    pub started_at: i64,      // When the session started
+    pub ended_at: Option<i64>, // When the session ended (None if still active)
+    pub duration_ms: i64,      // Duration of this session
+}
+
+/// A URL change record for a tab
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UrlHistoryEntry {
+    pub url: String,
+    pub title: Option<String>,
+    pub visited_at: i64,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TabSnapshot {
     pub screenshot_path: Option<String>,
@@ -38,6 +54,12 @@ pub struct TabRecord {
     pub description: Option<String>,
     pub snapshot: Option<TabSnapshot>,
     pub suggestion: Option<TabSuggestion>,
+    /// Session history - each time the tab was actively viewed
+    #[serde(default)]
+    pub sessions: Vec<ActiveSession>,
+    /// URL history - URLs visited in this tab
+    #[serde(default)]
+    pub url_history: Vec<UrlHistoryEntry>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -301,6 +301,8 @@ async fn handle_capture(
             description: payload.tab.description.clone(),
             snapshot: None,
             suggestion: None,
+            sessions: Vec::new(),
+            url_history: Vec::new(),
         });
 
     // Update snapshot
@@ -359,6 +361,8 @@ async fn handle_event(State(state): State<ServerState>, Json(event): Json<TabEve
                     description: event.tab.description.clone(),
                     snapshot: None,
                     suggestion: None,
+                    sessions: Vec::new(),
+                    url_history: Vec::new(),
                 });
 
             // Update fields

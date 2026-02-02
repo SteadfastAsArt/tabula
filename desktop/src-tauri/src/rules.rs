@@ -186,6 +186,8 @@ mod tests {
             description: None,
             snapshot: None,
             suggestion: None,
+            sessions: Vec::new(),
+            url_history: Vec::new(),
         }
     }
 
